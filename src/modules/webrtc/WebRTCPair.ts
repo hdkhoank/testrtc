@@ -8,22 +8,24 @@ export class WebRTCPair extends AdvanceEventEmitter {
   private pc!: RTCPeerConnection;
   private sg!: SignalPairInterface
   private pcEvent = new AdvanceEventEmitter();
+  private RESTART_SIGNAL = "restart";
   private OFFER_SIGNAL = "sdp";
   private ANSWER_SIGNAL = "sdp";
   private pcReady!: Promise<any>
+  private randomId!: string
 
   public logHook = new EventEmitter()
 
   protected log(...params: any[]) {
     let tmp = [`[WebRTCPair] [peer:${this.targetId}]`, ...params.map(e => typeof e == 'string' ? e : JSON.stringify(e))]
     console.log(...tmp)
-    this.logHook.emit("log",...tmp)
+    this.logHook.emit("log", ...tmp)
   }
-  
+
   protected error(...params: any[]) {
     let tmp = [`[WebRTCPair] [peer:${this.targetId}]`, ...params.map(e => typeof e == 'string' ? e : JSON.stringify(e))]
     console.trace(...tmp)
-    this.logHook.emit("error",...tmp)
+    this.logHook.emit("error", ...tmp)
   }
 
   constructor(
@@ -108,11 +110,12 @@ export class WebRTCPair extends AdvanceEventEmitter {
     })
 
     if (this.initiator) {
-      this.sg.on("reconnectErr", error => this.error(`reconnectErr`, error))
+      this.sg.on(this.RESTART_SIGNAL, randomId => {
+        this.restart()
+      })
     } else {
-      this.sg.on("reconnect", () => this.processReconnectSignal())
+
     }
-    this.sg.on("handshakeError", error => this.error(`reconnectErr`, error))
   }
 
   async processReconnectSignal() {
@@ -167,9 +170,28 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
   }
 
+  async restart() {
+    if (this.initiator) {
+      this.log(`restart ice`);
+
+      let offer = await this.pc.createOffer({ iceRestart: true });
+      await this.pc.setLocalDescription(offer);
+      this.sg.send(this.OFFER_SIGNAL, offer);
+      await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Restart Answer' Timeout", timeout: 5000 });
+      this.log(`get restart answer`);
+      this.log(`restart complete`);
+
+    } else {
+      this.log(`restart ice`);
+      this.sg.send(this.RESTART_SIGNAL, this.randomId)
+      await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Restart Offer' Timeout", timeout: 5000 });
+      this.log(`restart complete`);
+    }
+  }
+
   async start() {
 
-    let randomId = Math.random().toString().slice(2)
+    this.randomId = Math.random().toString().slice(2)
 
     this.log(`start`);
 
@@ -178,9 +200,9 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.pc = await this._initPeerConnection();
 
-    this.sg.send("ok", randomId);
+    this.sg.send("ok", this.randomId);
     await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: 5000 });
-    this.sg.send("ok", randomId);
+    this.sg.send("ok", this.randomId);
     this.log(`get ok`);
 
     if (this.initiator) {

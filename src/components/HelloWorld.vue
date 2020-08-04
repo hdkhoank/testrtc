@@ -7,8 +7,9 @@
     </div>
     <p />
     <div>
-      <button @click="start">Start</button>
-      <button @click="stop">Stop</button>
+      <button @click="start" :disabled="webRTCPair">Start</button>
+      <button @click="stop" :disabled="!webRTCPair">Stop</button>
+      <button @click="restart" :disabled="!webRTCPair">Restart</button>
     </div>
     <p />
     <pre style="width: 400px;height: 200px;overflow: auto ; margin: 1em auto; border: 1px solid #aaa;text-align: left;font-size:0.9em;"><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
@@ -35,8 +36,12 @@ export default class HelloWorld extends Vue {
   partnerId = "";
   initiator: boolean = false;
   logs: string[] = [];
-
+  
   mounted() {}
+
+  get signal(){
+    return new Signal(this.myId)
+  }
 
   async start() {
     if (this.webRTCPair) {
@@ -47,7 +52,7 @@ export default class HelloWorld extends Vue {
     if (!this.webRTCPair) {
       this.webRTCPair = new WebRTCPair(
         this.partnerId,
-        new Signal(this.myId),
+        this.signal,
         this.initiator,
         async () => {
           let stream = await navigator.mediaDevices.getUserMedia({
@@ -83,6 +88,13 @@ export default class HelloWorld extends Vue {
   stop() {
     if (this.webRTCPair) {
       this.webRTCPair.close();
+      this.webRTCPair = null
+    }
+  }
+
+  restart(){
+    if (this.webRTCPair) {
+      this.webRTCPair.restart();
     }
   }
 
