@@ -11,7 +11,6 @@ export class WebRTCPair extends AdvanceEventEmitter {
   private RESTART_SIGNAL = "restart";
   private OFFER_SIGNAL = "sdp";
   private ANSWER_SIGNAL = "sdp";
-  private pcReady!: Promise<any>
   private randomId!: string
 
   public logHook = new EventEmitter()
@@ -57,7 +56,6 @@ export class WebRTCPair extends AdvanceEventEmitter {
     pc.addEventListener("icecandidate", async iceCandidate => {
       this.log("[PC] icecandidate", iceCandidate?.candidate)
       if (pc == this.pc) {
-        await this.pcReady
         iceCandidate.candidate && this.sg.send("candidate", iceCandidate.candidate);
       }
     });

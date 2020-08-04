@@ -74,11 +74,11 @@ export default class HelloWorld extends Vue {
       );
       this.webRTCPair.logHook.on("log", (...msg: string[]) => {
         this.logs.push(msg.join(" "));
-        this.logs = this.logs.slice(-10)
+        this.logs = this.logs.slice(-100)
       });
       this.webRTCPair.logHook.on("error", (...msg: string[]) => {
         this.logs.push("ERROR " + msg.join(" "));
-        this.logs = this.logs.slice(-10)
+        this.logs = this.logs.slice(-100)
       });
 
       await this.webRTCPair.start()
