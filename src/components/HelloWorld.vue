@@ -1,41 +1,92 @@
 <template>
   <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-typescript" target="_blank" rel="noopener">typescript</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-router" target="_blank" rel="noopener">router</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+    <div>
+      <input v-model="myId" placeholder="my ID" />
+      <input v-model="partnerId" placeholder="partner ID" />
+      <input type="checkbox" v-model="initiator" />
+    </div>
+    <p />
+    <div>
+      <button @click="start">Start</button>
+      <button @click="stop">Stop</button>
+    </div>
+    <p />
+    <pre style="width: 400px;height: 200px;overflow: auto ; margin: 1em auto; border: 1px solid #aaa;text-align: left;font-size:0.9em;"><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
+    <p />
+    <video ref="video" width="400" height="300" muted autoplay/>
   </div>
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue } from 'vue-property-decorator';
+import { Component, Prop, Vue, Ref } from "vue-property-decorator";
+import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
+import { Signal } from "../modules/webrtc/Signal";
 
 @Component
 export default class HelloWorld extends Vue {
   @Prop() private msg!: string;
+
+  @Ref("video")
+  video!: HTMLVideoElement;
+
+  webRTCPair!: WebRTCPair | null;
+
+  myId = String((Math.random() * 1000) | 0);
+  partnerId = "";
+  initiator: boolean = false;
+  logs: string[] = [];
+
+  mounted() {}
+
+  async start() {
+    if (this.webRTCPair) {
+      this.webRTCPair.close();
+      this.webRTCPair = null;
+    }
+
+    if (!this.webRTCPair) {
+      this.webRTCPair = new WebRTCPair(
+        this.partnerId,
+        new Signal(this.myId),
+        this.initiator,
+        async () => {
+          let stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+
+          let pc = new RTCPeerConnection();
+          for (let track of stream.getTracks()) {
+            pc.addTrack(track, stream);
+          }
+          pc.addEventListener("track", (event) => {
+            let stream = event.streams[0];
+            this.video.srcObject = stream;
+            this.logs.push("PC Tracks ");
+          });
+          return pc;
+        }
+      );
+      this.webRTCPair.logHook.on("log", (...msg: string[]) => {
+        this.logs.push(msg.join(" "));
+        this.logs = this.logs.slice(-10)
+      });
+      this.webRTCPair.logHook.on("error", (...msg: string[]) => {
+        this.logs.push("ERROR " + msg.join(" "));
+        this.logs = this.logs.slice(-10)
+      });
+
+      await this.webRTCPair.start()
+    }
+  }
+
+  stop() {
+    if (this.webRTCPair) {
+      this.webRTCPair.close();
+    }
+  }
+
+  reconnect() {}
 }
 </script>
 
@@ -54,4 +105,7 @@ li
 
 a
   color #42b983
+
+video
+  background-color black
 </style>
