@@ -12,9 +12,11 @@
       <button @click="restart" :disabled="!webRTCPair">Restart</button>
     </div>
     <p />
-    <pre style="width: 400px;height: 200px;overflow: auto ; margin: 1em auto; border: 1px solid #aaa;text-align: left;font-size:0.9em;"><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
+    <pre
+      style="width: 400px;height: 200px;overflow: auto ; margin: 1em auto; border: 1px solid #aaa;text-align: left;font-size:0.9em;"
+    ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
-    <video ref="video" width="400" height="300" muted autoplay/>
+    <video ref="video" width="400" height="300" muted autoplay />
   </div>
 </template>
 
@@ -36,11 +38,11 @@ export default class HelloWorld extends Vue {
   partnerId = "";
   initiator: boolean = false;
   logs: string[] = [];
-  
+
   mounted() {}
 
-  get signal(){
-    return new Signal(this.myId)
+  get signal() {
+    return new Signal(this.myId);
   }
 
   async start() {
@@ -60,39 +62,68 @@ export default class HelloWorld extends Vue {
             audio: true,
           });
 
-          let pc = new RTCPeerConnection();
+          let pc = new RTCPeerConnection({
+            iceServers: [
+              {
+                urls: ["stun:34.92.44.253:3478"],
+              },
+              {
+                urls: ["stun:35.247.153.249:3478"],
+              },
+              {
+                urls: ["turn:34.92.44.253:3478"],
+                username: "username",
+                credential: "password",
+              },
+              {
+                urls: ["turn:35.247.153.249:3478"],
+                username: "username",
+                credential: "password",
+              },
+            ],
+          });
+
           for (let track of stream.getTracks()) {
             pc.addTrack(track, stream);
           }
+          let trackHandlerTimeout, tracks : MediaStreamTrack[]= []
+
           pc.addEventListener("track", (event) => {
-            let stream = event.streams[0];
-            this.video.srcObject = stream;
-            this.logs.push("PC Tracks ");
+            tracks.push(event.track)
+            trackHandlerTimeout = setTimeout(() => {
+              let stream = new MediaStream(tracks)
+              this.video.srcObject = stream;
+              console.log(tracks)
+              this.logs.push("PC Tracks ");
+            }, 100)
           });
+
           return pc;
         }
       );
+
       this.webRTCPair.logHook.on("log", (...msg: string[]) => {
         this.logs.push(msg.join(" "));
-        this.logs = this.logs.slice(-100)
-      });
-      this.webRTCPair.logHook.on("error", (...msg: string[]) => {
-        this.logs.push("ERROR " + msg.join(" "));
-        this.logs = this.logs.slice(-100)
+        this.logs = this.logs.slice(-100);
       });
 
-      await this.webRTCPair.start()
+      this.webRTCPair.logHook.on("error", (...msg: string[]) => {
+        this.logs.push("ERROR " + msg.join(" "));
+        this.logs = this.logs.slice(-100);
+      });
+
+      await this.webRTCPair.start();
     }
   }
 
   stop() {
     if (this.webRTCPair) {
       this.webRTCPair.close();
-      this.webRTCPair = null
+      this.webRTCPair = null;
     }
   }
 
-  restart(){
+  restart() {
     if (this.webRTCPair) {
       this.webRTCPair.restart();
     }
