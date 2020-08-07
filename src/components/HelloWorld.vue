@@ -86,10 +86,11 @@ export default class HelloWorld extends Vue {
           for (let track of stream.getTracks()) {
             pc.addTrack(track, stream);
           }
-          let trackHandlerTimeout, tracks : MediaStreamTrack[]= []
+          let trackHandlerTimeout: number, tracks : MediaStreamTrack[]= []
 
           pc.addEventListener("track", (event) => {
             tracks.push(event.track)
+            clearTimeout(trackHandlerTimeout);
             trackHandlerTimeout = setTimeout(() => {
               let stream = new MediaStream(tracks)
               this.video.srcObject = stream;
