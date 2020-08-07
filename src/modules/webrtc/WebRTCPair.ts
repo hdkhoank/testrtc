@@ -87,7 +87,12 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.sg.on("candidate", async (candidate) => {
       if (candidate) {
-        await this.pc.addIceCandidate(candidate);
+        try{
+          await this.pc.addIceCandidate(candidate);
+        }catch(e){
+          console.error(e)
+          console.log(candidate)
+        }
       }
     });
 
