@@ -80,18 +80,19 @@ export default class HelloWorld extends Vue {
         });
 
         for (let track of stream.getTracks()) {
-          pc.addTransceiver(track, {
-            direction: "sendrecv",
-            streams: [stream],
-            sendEncodings: [{ rid: "f" }],
-            // sendEncodings: [
-            //   {
-            //     rid: "q",
-            //     scaleResolutionDownBy: 4.0,
-            //   },
-            // ],
-          });
+          // pc.addTransceiver(track, {
+          //   direction: "sendrecv",
+          //   streams: [stream],
+          //   sendEncodings: [{ rid: "f" }],
+          //   // sendEncodings: [
+          //   //   {
+          //   //     rid: "q",
+          //   //     scaleResolutionDownBy: 4.0,
+          //   //   },
+          //   // ],
+          // });
           // pc.addTransceiver(track.kind)
+          pc.addTrack(track)
         }
         let trackHandlerTimeout: number,
           tracks: MediaStreamTrack[] = [];

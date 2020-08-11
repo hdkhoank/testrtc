@@ -11,7 +11,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
   private RESTART_SIGNAL = "restart";
   private OFFER_SIGNAL = "sdp";
   private ANSWER_SIGNAL = "sdp";
-  private randomId!: string
+  private sessionId!: string
 
   public logHook = new EventEmitter()
 
@@ -44,7 +44,11 @@ export class WebRTCPair extends AdvanceEventEmitter {
   }
 
   private async _initPeerConnection() {
+
+    this.sessionId = Math.random().toString().slice(2)
+
     let pc = await this.initPC();
+
 
     pc.addEventListener("connectionstatechange", e => {
       if (pc == this.pc) {
@@ -59,10 +63,12 @@ export class WebRTCPair extends AdvanceEventEmitter {
         iceCandidate.candidate && this.sg.send("candidate", iceCandidate.candidate);
       }
     });
+
+
     return pc;
   }
 
-  private _processSDP(sdp: any) {
+  private _processSDP(sdp: RTCSessionDescriptionInit) {
     return { sdp: this.processSDP(sdp.sdp + ""), type: sdp.type };
   }
 
@@ -81,15 +87,15 @@ export class WebRTCPair extends AdvanceEventEmitter {
         let anwser = await this.pc.createAnswer();
         anwser = this._processSDP(anwser);
         await this.pc.setLocalDescription(anwser);
-        this.sg.send(this.ANSWER_SIGNAL, anwser);
+        this.sg.send(this.ANSWER_SIGNAL, anwser, this.sessionId);
       });
     }
 
     this.sg.on("candidate", async (candidate) => {
       if (candidate) {
-        try{
+        try {
           await this.pc.addIceCandidate(candidate);
-        }catch(e){
+        } catch (e) {
           console.error(e)
           console.log(candidate)
         }
@@ -178,15 +184,16 @@ export class WebRTCPair extends AdvanceEventEmitter {
       this.log(`restart ice`);
 
       let offer = await this.pc.createOffer({ iceRestart: true });
+      offer = this._processSDP(offer);
       await this.pc.setLocalDescription(offer);
-      this.sg.send(this.OFFER_SIGNAL, offer);
+      this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
       await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Restart Answer' Timeout", timeout: 5000 });
       this.log(`get restart answer`);
       this.log(`restart complete`);
 
     } else {
       this.log(`restart ice`);
-      this.sg.send(this.RESTART_SIGNAL, this.randomId)
+      this.sg.send(this.RESTART_SIGNAL, this.sessionId)
       await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Restart Offer' Timeout", timeout: 5000 });
       this.log(`restart complete`);
     }
@@ -194,7 +201,6 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
   async start() {
 
-    this.randomId = Math.random().toString().slice(2)
 
     this.log(`start`);
 
@@ -203,16 +209,16 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.pc = await this._initPeerConnection();
 
-    this.sg.send("ok", this.randomId);
+    this.sg.send("ok", this.sessionId);
     await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: 5000 });
-    this.sg.send("ok", this.randomId);
+    this.sg.send("ok", this.sessionId);
     this.log(`get ok`);
 
     if (this.initiator) {
       let offer = await this.pc.createOffer();
       offer = this._processSDP(offer);
       await this.pc.setLocalDescription(offer);
-      this.sg.send(this.OFFER_SIGNAL, offer);
+      this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
       await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Answer' Timeout", timeout: 5000 });
       this.log(`get answer`);
     } else {
@@ -228,6 +234,19 @@ export class WebRTCPair extends AdvanceEventEmitter {
       });
 
     this.log(`connected`);
+
+    this.log("----------------")
+    this.log("[PC] [Local IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.local?.toJSON())
+    this.log("[PC] [Remote IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.remote?.toJSON())
+
+
+    this.pc.getSenders()[0]?.transport?.iceTransport.addEventListener("selectedcandidatepairchange", event => {
+      this.log("----------------")
+      this.log("[PC] [Local IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.local?.toJSON())
+      this.log("[PC] [Remote IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.remote?.toJSON())
+    })
+
+
 
   }
 
