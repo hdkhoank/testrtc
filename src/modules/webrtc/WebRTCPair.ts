@@ -180,6 +180,10 @@ export class WebRTCPair extends AdvanceEventEmitter {
   }
 
   async restart() {
+    // if (this.pc instanceof RTCPeerConnection)
+    //   setTimeout((pc: RTCPeerConnection) => pc.close(), 5000, this.pc)
+
+    // this.pc = await this._initPeerConnection();
     if (this.initiator) {
       this.log(`restart ice`);
 
