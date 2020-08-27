@@ -2,7 +2,7 @@
   <div class="hello">
     <div>
       <input v-model="myId" placeholder="my ID" />
-      <input v-model="partnerId" placeholder="partner ID" :disabled="true"/>
+      <input v-model="partnerId" placeholder="partner ID" :disabled="true" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
@@ -34,6 +34,7 @@ export default class Viewer extends Vue {
 
   webRTCPair!: WebRTCPair | null;
 
+  sessionId = "sid_" + String((Math.random() * 100000) | 0);
   myId = "student_" + String((Math.random() * 1000) | 0);
   partnerId = "123";
   initiator: boolean = true;
@@ -46,13 +47,18 @@ export default class Viewer extends Vue {
   }
 
   async start() {
+    let sessionId = this.sessionId;
     if (this.webRTCPair) {
       this.webRTCPair.close();
       this.webRTCPair = null;
     }
 
     if (!this.webRTCPair) {
-      this.webRTCPair = new WebRTCPair(this.partnerId, this.signal, this.initiator, async () => {
+      this.webRTCPair = new (class extends WebRTCPair {
+        signalPairFactory(signal: Signal) {
+          return signal.getSignalPair(this.targetId).getSignalPair(sessionId);
+        }
+      })(this.partnerId, this.signal, this.initiator, async () => {
         let stream = await navigator.mediaDevices.getUserMedia({
           // video: true,
           audio: true,
@@ -92,7 +98,7 @@ export default class Viewer extends Vue {
           //   // ],
           // });
           // pc.addTransceiver(track.kind)
-          pc.addTrack(track)
+          pc.addTrack(track);
         }
         let trackHandlerTimeout: number,
           tracks: MediaStreamTrack[] = [];
