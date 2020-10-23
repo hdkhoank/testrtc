@@ -13,7 +13,7 @@
     </div>
     <p />
     <pre
-      style="width: 400px;height: 200px;overflow: auto ; margin: 1em auto; border: 1px solid #aaa;text-align: left;font-size:0.9em;"
+      style="width: 400px; height: 200px; overflow: auto; margin: 1em auto; border: 1px solid #aaa; text-align: left; font-size: 0.9em"
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
     <video ref="video" width="400" height="300" muted autoplay controls />
@@ -24,6 +24,7 @@
 import { Component, Prop, Vue, Ref } from "vue-property-decorator";
 import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
 import { Signal } from "../modules/webrtc/Signal";
+import { SyncWithRouterQuerySimple } from "@/utils";
 
 @Component
 export default class HelloWorld extends Vue {
@@ -34,9 +35,15 @@ export default class HelloWorld extends Vue {
 
   webRTCPair!: WebRTCPair | null;
 
-  myId = String((Math.random() * 1000) | 0);
-  partnerId = "";
-  initiator: boolean = false;
+  @SyncWithRouterQuerySimple("id", { defaultValue: String((Math.random() * 1000) | 0) })
+  myId!: string;
+
+  @SyncWithRouterQuerySimple("to", { defaultValue: String(123) })
+  partnerId!: string;
+
+  @SyncWithRouterQuerySimple("initiator", { defaultValue: false, map: (e) => e == "true", revMap: (e) => String(e) })
+  initiator!: boolean;
+
   logs: string[] = [];
 
   mounted() {}
@@ -92,7 +99,7 @@ export default class HelloWorld extends Vue {
           //   // ],
           // });
           // pc.addTransceiver(track.kind)
-          pc.addTrack(track)
+          pc.addTrack(track);
         }
         let trackHandlerTimeout: number,
           tracks: MediaStreamTrack[] = [];
