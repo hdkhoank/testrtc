@@ -5,7 +5,7 @@ import { WSWrapper } from './WSWrapper';
 
 export class Signal extends AdvanceEventEmitter {
 
-  wsWrapper = new WSWrapper(`wss://signal-test.dechen.app?id=${this.signalId}`);
+  wsWrapper = new WSWrapper(`wss://signal-conference-staging.quickom.com?id=${this.signalId}`);
 
   constructor(public signalId: string) {
     super();
