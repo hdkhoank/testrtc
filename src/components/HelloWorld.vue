@@ -17,6 +17,8 @@
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
     <video ref="video" width="400" height="300" muted autoplay controls />
+    <div>SDP</div>
+    <pre>{{ sdp }}</pre>
   </div>
 </template>
 
@@ -25,7 +27,7 @@ import { Component, Prop, Vue, Ref } from "vue-property-decorator";
 import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
 import { Signal } from "../modules/webrtc/Signal";
 import { SyncWithRouterQuerySimple } from "@/utils";
-
+import { processSDP } from "../modules/webrtc/sdp";
 @Component
 export default class HelloWorld extends Vue {
   @Prop() private msg!: string;
@@ -46,6 +48,8 @@ export default class HelloWorld extends Vue {
 
   logs: string[] = [];
 
+  sdp = "";
+
   mounted() {}
 
   get signal() {
@@ -59,64 +63,73 @@ export default class HelloWorld extends Vue {
     }
 
     if (!this.webRTCPair) {
-      this.webRTCPair = new WebRTCPair(this.partnerId, this.signal, this.initiator, async () => {
-        let stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+      this.webRTCPair = new WebRTCPair(
+        this.partnerId,
+        this.signal,
+        this.initiator,
+        async () => {
+          let stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
 
-        let pc = new RTCPeerConnection({
-          iceServers: [
-            {
-              urls: ["stun:34.92.44.253:3478"],
-            },
-            {
-              urls: ["stun:35.247.153.249:3478"],
-            },
-            {
-              urls: ["turn:34.92.44.253:3478"],
-              username: "username",
-              credential: "password",
-            },
-            {
-              urls: ["turn:35.247.153.249:3478"],
-              username: "username",
-              credential: "password",
-            },
-          ],
-        });
+          let pc = new RTCPeerConnection({
+            iceServers: [
+              {
+                urls: ["stun:34.92.44.253:3478"],
+              },
+              {
+                urls: ["stun:35.247.153.249:3478"],
+              },
+              {
+                urls: ["turn:34.92.44.253:3478"],
+                username: "username",
+                credential: "password",
+              },
+              {
+                urls: ["turn:35.247.153.249:3478"],
+                username: "username",
+                credential: "password",
+              },
+            ],
+          });
 
-        for (let track of stream.getTracks()) {
-          // pc.addTransceiver(track, {
-          //   direction: "sendrecv",
-          //   streams: [stream],
-          //   sendEncodings: [{ rid: "f" }],
-          //   // sendEncodings: [
-          //   //   {
-          //   //     rid: "q",
-          //   //     scaleResolutionDownBy: 4.0,
-          //   //   },
-          //   // ],
-          // });
-          // pc.addTransceiver(track.kind)
-          pc.addTrack(track);
+          for (let track of stream.getTracks()) {
+            // pc.addTransceiver(track, {
+            //   direction: "sendrecv",
+            //   streams: [stream],
+            //   sendEncodings: [{ rid: "f" }],
+            //   // sendEncodings: [
+            //   //   {
+            //   //     rid: "q",
+            //   //     scaleResolutionDownBy: 4.0,
+            //   //   },
+            //   // ],
+            // });
+            // pc.addTransceiver(track.kind)
+            pc.addTrack(track);
+          }
+          let trackHandlerTimeout: number,
+            tracks: MediaStreamTrack[] = [];
+
+          pc.addEventListener("track", (event) => {
+            tracks.push(event.track);
+            clearTimeout(trackHandlerTimeout);
+            trackHandlerTimeout = setTimeout(() => {
+              let stream = new MediaStream(tracks);
+              this.video.srcObject = stream;
+              console.log(tracks);
+              this.logs.push("PC Tracks ");
+            }, 100);
+          });
+
+          return pc;
+        },
+        (e) => {
+          this.sdp = processSDP(e)
+          return processSDP(e)
         }
-        let trackHandlerTimeout: number,
-          tracks: MediaStreamTrack[] = [];
-
-        pc.addEventListener("track", (event) => {
-          tracks.push(event.track);
-          clearTimeout(trackHandlerTimeout);
-          trackHandlerTimeout = setTimeout(() => {
-            let stream = new MediaStream(tracks);
-            this.video.srcObject = stream;
-            console.log(tracks);
-            this.logs.push("PC Tracks ");
-          }, 100);
-        });
-
-        return pc;
-      });
+      );
 
       this.webRTCPair.logHook.on("log", (...msg: string[]) => {
         this.logs.push(msg.join(" "));
