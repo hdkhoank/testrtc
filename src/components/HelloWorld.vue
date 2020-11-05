@@ -114,6 +114,8 @@ export default class HelloWorld extends Vue {
 
           pc.addEventListener("track", (event) => {
             tracks.push(event.track);
+            this.logs.push("[Trank kind]", event.track.kind);
+
             clearTimeout(trackHandlerTimeout);
             trackHandlerTimeout = setTimeout(() => {
               let stream = new MediaStream(tracks);
@@ -126,8 +128,8 @@ export default class HelloWorld extends Vue {
           return pc;
         },
         (e) => {
-          this.sdp = processSDP(e)
-          return processSDP(e)
+          this.sdp = processSDP(e);
+          return processSDP(e);
         }
       );
 
