@@ -10,11 +10,11 @@ export function processSDP(sdpString: string) {
           parserHead: {
             ...e.parserHead,
             codeCodes: e.parserHead.codeCodes.filter(e =>
-              [98,99].includes(parseInt(e)),
+              [96, 97].includes(parseInt(e)),
             ),
           },
           codecs: e.codecs
-            .filter(e => [98,99].includes(parseInt(e.parse.id)))
+            .filter(e => [96, 97].includes(parseInt(e.parse.id)))
             .map(({ parse, text }) => ({
               parse: {
                 ...parse,

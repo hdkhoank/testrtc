@@ -25,7 +25,7 @@
 <script lang="ts">
 import { Component, Prop, Vue, Ref } from "vue-property-decorator";
 import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
-import { Signal } from "../modules/webrtc/Signal";
+import { Signal, SignalPairInterface } from "../modules/webrtc/Signal";
 import { SyncWithRouterQuerySimple } from "@/utils";
 import { processSDP } from "../modules/webrtc/sdp";
 @Component
@@ -63,7 +63,11 @@ export default class HelloWorld extends Vue {
     }
 
     if (!this.webRTCPair) {
-      this.webRTCPair = new WebRTCPair(
+      this.webRTCPair = new (class extends WebRTCPair {
+        protected signalPairFactory(signal: Signal) {
+          return super.signalPairFactory(signal).getSignalPair(Math.random().toString().slice(2));
+        }
+      })(
         this.partnerId,
         this.signal,
         this.initiator,
@@ -113,16 +117,18 @@ export default class HelloWorld extends Vue {
             tracks: MediaStreamTrack[] = [];
 
           pc.addEventListener("track", (event) => {
-            tracks.push(event.track);
-            this.logs.push("[Trank kind]", event.track.kind);
-
-            clearTimeout(trackHandlerTimeout);
-            trackHandlerTimeout = setTimeout(() => {
-              let stream = new MediaStream(tracks);
-              this.video.srcObject = stream;
-              console.log(tracks);
-              this.logs.push("PC Tracks ");
-            }, 100);
+            if(event.track.kind == "video"){
+              tracks.push(event.track);
+              this.logs.push("[Trank kind]", event.track.kind);
+  
+              clearTimeout(trackHandlerTimeout);
+              trackHandlerTimeout = setTimeout(() => {
+                let stream = new MediaStream(tracks);
+                this.video.srcObject = stream;
+                console.log(tracks);
+                this.logs.push("PC Tracks ");
+              }, 100);
+            }
           });
 
           return pc;
