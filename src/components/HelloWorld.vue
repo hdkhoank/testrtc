@@ -135,7 +135,8 @@ export default class HelloWorld extends Vue {
         },
         (e) => {
           this.sdp = processSDP(e);
-          return processSDP(e);
+          return (e);
+          // return processSDP(e);
         }
       );
 
