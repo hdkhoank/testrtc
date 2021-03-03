@@ -2,7 +2,7 @@
   <div class="hello">
     <div>
       <input v-model="myId" placeholder="my ID" />
-      <input v-model="partnerId" placeholder="partner ID" :disabled="true" />
+      <input v-model="partnerId" placeholder="partner ID" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
