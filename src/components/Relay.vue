@@ -54,6 +54,11 @@ export default class Viewer extends Vue {
 
   myId = String((Math.random() * 1000000000) | 0);
 
+  @SyncWithRouterQuerySimple("signalURL", {
+    defaultValue: `wss://signal-conference-staging.quickom.com`,
+  })
+  signalURL!: string;
+
   @SyncWithRouterQuerySimple("partnerId", {
     defaultValue: String((Math.random() * 1000000000) | 0),
   })
@@ -71,7 +76,7 @@ export default class Viewer extends Vue {
   mounted() {}
 
   get signal() {
-    return new Signal(this.myId);
+    return new Signal(this.myId, this.signalURL);
   }
 
   @mounted
