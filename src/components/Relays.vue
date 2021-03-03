@@ -18,6 +18,12 @@ import IO from "socket.io-client";
   },
 })
 export default class Relays extends Vue {
+
+  @SyncWithRouterQuerySimple("reportURL", {
+    defaultValue: "http://localhost:8000",
+  })
+  reportURL!: string;
+
   @SyncWithRouterQuerySimple("count", {
     defaultValue: "1",
   })
@@ -36,7 +42,7 @@ export default class Relays extends Vue {
 
   @mounted
   logReportData() {
-    let io = (<any>IO)("http://localhost:8000");
+    let io = (<any>IO)(this.reportURL);
     setTimeout(() => {
       console.log("REPORT ---------------");
       console.table(this.reportData);

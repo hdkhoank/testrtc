@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "build": "vue-cli-service build",
+    "dep": "firebase deploy --only hosting:webrtc-benkmark"
   },
   "dependencies": {
     "@types/events": "^3.0.0",
