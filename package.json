@@ -8,9 +8,11 @@
   },
   "dependencies": {
     "@types/events": "^3.0.0",
+    "@types/socket.io-client": "^1.4.35",
     "events": "^3.2.0",
     "greenlet": "^1.1.0",
     "lodash": "^4.17.21",
+    "socket.io-client": "^3.1.2",
     "vue": "^2.6.11",
     "vue-class-component": "^7.2.3",
     "vue-property-decorator": "^8.4.2",

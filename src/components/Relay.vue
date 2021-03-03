@@ -227,7 +227,7 @@ export default class Viewer extends Vue {
         video_playing: isVideoPlaying,
         audio_playing: monitor.getBitrate(this.myId + "_down_audio") > 0,
       });
-    }, 5000);
+    }, 1000);
 
     peer.on("closed", () => {
       clearInterval(videoCheckInterval);

@@ -10,6 +10,7 @@ import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
 import { Signal } from "../modules/webrtc/Signal";
 import Relay from "./Relay.vue";
 import { mounted, SyncWithRouterQuerySimple } from "../utils";
+import IO from "socket.io-client";
 
 @Component({
   components: {
@@ -26,18 +27,25 @@ export default class Relays extends Vue {
     return parseInt(this.n);
   }
 
-  reportData! : any[]
+  reportData!: any[];
 
   onReport(i, event) {
-    this.reportData = this.reportData || []
+    this.reportData = this.reportData || [];
     this.reportData[i] = event;
   }
 
   @mounted
   logReportData() {
+    let io = (<any>IO)("http://localhost:8000");
+    setTimeout(() => {
+      console.log("REPORT ---------------");
+      console.table(this.reportData);
+      io.emit("report", this.reportData);
+    }, 1000);
     setInterval(() => {
       console.log("REPORT ---------------");
       console.table(this.reportData);
+      io.emit("report", this.reportData);
     }, 5000);
   }
 }
