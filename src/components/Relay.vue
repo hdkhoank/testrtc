@@ -9,13 +9,13 @@
     <div>
       <button @click="start" :disabled="webRTCPair">Start</button>
       <button @click="stop" :disabled="!webRTCPair">Stop</button>
-      <button @click="restart" :disabled="!webRTCPair">Restart</button>
+      <!-- <button @click="restart" :disabled="!webRTCPair">Restart</button> -->
     </div>
     <p />
     <pre
       style="
         width: 400px;
-        height: 200px;
+        height: 150px;
         overflow: auto;
         margin: 1em auto;
         border: 1px solid #aaa;
@@ -24,15 +24,22 @@
       "
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
-    <video ref="video" width="400" height="300" muted autoplay controls />
+    <video ref="video" width="400" height="150" muted autoplay controls />
   </div>
 </template>
-
+<style scoped>
+.hello {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+</style>
 <script lang="ts">
-import { Component, Prop, Vue, Ref } from "vue-property-decorator";
+import { Component, Prop, Vue, Ref, Emit } from "vue-property-decorator";
 import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
 import { Signal } from "../modules/webrtc/Signal";
-import { SyncWithRouterQuerySimple } from "@/utils";
+import { mounted, SyncWithRouterQuerySimple } from "../utils";
+import { monitor } from "../modules/webrtc/bitrateMonitor";
 
 @Component
 export default class Viewer extends Vue {
@@ -45,10 +52,7 @@ export default class Viewer extends Vue {
 
   sessionId = "sid_" + String((Math.random() * 10000000) | 0);
 
-  @SyncWithRouterQuerySimple("myId", {
-    defaultValue: String((Math.random() * 1000000000) | 0),
-  })
-  myId!: string;
+  myId = String((Math.random() * 1000000000) | 0);
 
   @SyncWithRouterQuerySimple("partnerId", {
     defaultValue: String((Math.random() * 1000000000) | 0),
@@ -70,6 +74,7 @@ export default class Viewer extends Vue {
     return new Signal(this.myId);
   }
 
+  @mounted
   async start() {
     let sessionId = this.sessionId;
     if (this.webRTCPair) {
@@ -110,7 +115,8 @@ export default class Viewer extends Vue {
         });
 
         for (let track of stream.getTracks()) {
-          pc.addTrack(track);
+          let sender = pc.addTrack(track);
+          monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
         }
         let trackHandlerTimeout: number,
           tracks: MediaStreamTrack[] = [];
@@ -118,6 +124,11 @@ export default class Viewer extends Vue {
         pc.addEventListener("track", (event) => {
           tracks.push(event.track);
           clearTimeout(trackHandlerTimeout);
+          monitor.addMonitor(
+            this.myId + "_down_" + event.track.kind,
+            event.receiver
+          );
+
           trackHandlerTimeout = setTimeout(() => {
             let stream = new MediaStream(tracks);
             this.video.srcObject = stream;
@@ -129,15 +140,7 @@ export default class Viewer extends Vue {
         return pc;
       });
 
-      this.webRTCPair.logHook.on("log", (...msg: string[]) => {
-        this.logs.push(msg.join(" "));
-        this.logs = this.logs.slice(-100);
-      });
-
-      this.webRTCPair.logHook.on("error", (...msg: string[]) => {
-        this.logs.push("ERROR " + msg.join(" "));
-        this.logs = this.logs.slice(-100);
-      });
+      this.initMonitor(this.webRTCPair)
 
       await this.webRTCPair.start();
     }
@@ -150,13 +153,94 @@ export default class Viewer extends Vue {
     }
   }
 
-  restart() {
-    if (this.webRTCPair) {
-      this.webRTCPair.restart();
-    }
+  @Ref("video")
+  videoElement!: HTMLVideoElement;
+
+  initMonitor(peer: WebRTCPair) {
+    peer.logHook.on("log", (...msg: string[]) => {
+      this.logs.push(msg.join(" "));
+      this.logs = this.logs.slice(-100);
+    });
+
+    peer.logHook.on("error", (...msg: string[]) => {
+      this.logs.push("ERROR " + msg.join(" "));
+      this.logs = this.logs.slice(-100);
+    });
+
+    let videoCheckInterval,
+      audioCheckInterval,
+      reportInterval,
+      lastTimeFrame = 0,
+      videoLostCounter = 0,
+      audioLostCounter = 0,
+      isVideoPlaying = false;
+
+    peer.on("init", () => {
+      peer.log("Init loop check framerate");
+      clearInterval(videoCheckInterval);
+      videoCheckInterval = setInterval(() => {
+        let video = this.videoElement;
+        if (video.currentTime != lastTimeFrame) {
+          lastTimeFrame = video.currentTime;
+          videoLostCounter = 0;
+          isVideoPlaying = true;
+        } else {
+          videoLostCounter++;
+          if (videoLostCounter >= 3) {
+            isVideoPlaying = false;
+            videoLostCounter = 0;
+            peer.log("Video framerate is not updated, restarting ...");
+            peer.emit("failed");
+          }
+        }
+      }, 4000);
+    });
+
+    peer.on("init", () => {
+      peer.log("Init loop check audio bitrate");
+      clearInterval(audioCheckInterval);
+      audioCheckInterval = setInterval(() => {
+        if (monitor.getBitrate(this.myId) > 0) {
+          audioLostCounter = 0;
+        } else {
+          audioLostCounter++;
+          if (audioLostCounter >= 6) {
+            audioLostCounter = 0;
+            peer.log("Audio data fail to received, restarting ...");
+            peer.emit("failed");
+          }
+        }
+      }, 4000);
+    });
+
+    reportInterval = setInterval(() => {
+      this.report({
+        id: this.myId,
+        ws: this.signal.getStatus(),
+        peerIceState: this.webRTCPair.peerConnection?.iceConnectionState,
+        down_video: monitor.getBitrate(this.myId + "_down_video"),
+        down_audio: monitor.getBitrate(this.myId + "_down_audio"),
+        up_video: monitor.getBitrate(this.myId + "_up_video"),
+        up_audio: monitor.getBitrate(this.myId + "_up_audio"),
+        video_playing: isVideoPlaying,
+        audio_playing: monitor.getBitrate(this.myId + "_down_audio") > 0,
+      });
+    }, 5000);
+
+    peer.on("closed", () => {
+      clearInterval(videoCheckInterval);
+      clearInterval(audioCheckInterval);
+      monitor.removeMonitor(this.myId + "_down_video");
+      monitor.removeMonitor(this.myId + "_down_audio");
+      monitor.removeMonitor(this.myId + "_up_video");
+      monitor.removeMonitor(this.myId + "_up_audio");
+    });
   }
 
   reconnect() {}
+
+  @Emit("report")
+  report($event) {}
 }
 </script>
 

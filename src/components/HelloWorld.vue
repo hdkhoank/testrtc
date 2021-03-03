@@ -168,6 +168,7 @@ export default class HelloWorld extends Vue {
   }
 
   reconnect() {}
+  
 }
 </script>
 

@@ -27,8 +27,13 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: '/relay',
-    name: 'Viewer',
+    name: 'Relay',
     component: () => import(/* webpackChunkName: "about" */ '../components/Relay.vue')
+  },
+  {
+    path: '/relays',
+    name: 'Relays',
+    component: () => import(/* webpackChunkName: "about" */ '../components/Relays.vue')
   },
 ]
 

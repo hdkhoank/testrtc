@@ -40,3 +40,17 @@ export function SyncWithRouterQuerySimple<T>(
     }
   })
 }
+
+
+
+export const mounted = createDecorator((componentOptions, key) => {
+  let mounted: Function | undefined = componentOptions.mounted;
+  let methods: any = componentOptions.methods;
+  let handler: Function = methods[key];
+  componentOptions.mounted = function (this: any): void {
+    if (typeof mounted === "function")
+      mounted.call(this);
+
+    handler.call(this)
+  };
+})

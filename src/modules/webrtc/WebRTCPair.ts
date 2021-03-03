@@ -1,30 +1,47 @@
 import { AdvanceEventEmitter } from './AdvanceEventEmitter';
 import { Signal, SignalPairInterface } from './Signal';
 import { sleep } from './utils';
-import { EventEmitter } from "events";
 
 
 export class WebRTCPair extends AdvanceEventEmitter {
   private pc!: RTCPeerConnection;
   private sg!: SignalPairInterface
   private pcEvent = new AdvanceEventEmitter();
-  private RESTART_SIGNAL = "restart";
   private OFFER_SIGNAL = "sdp";
   private ANSWER_SIGNAL = "sdp";
-  private sessionId!: string
+  private TIMEOUT = 10000;
+  private running = false;
+  private _sessionId!: string
 
-  public logHook = new EventEmitter()
+  public logHook = new AdvanceEventEmitter()
 
-  protected log(...params: any[]) {
-    let tmp = [`[WebRTCPair] [peer:${this.targetId}]`, ...params.map(e => typeof e == 'string' ? e : JSON.stringify(e))]
-    console.log(...tmp)
-    this.logHook.emit("log", ...tmp)
+
+  public get peerConnection(){
+    return this.pc
   }
 
-  protected error(...params: any[]) {
-    let tmp = [`[WebRTCPair] [peer:${this.targetId}]`, ...params.map(e => typeof e == 'string' ? e : JSON.stringify(e))]
-    console.trace(...tmp)
-    this.logHook.emit("error", ...tmp)
+  public log(...params: any[]) {
+    console.log(`[WebRTCPair] [peer:${this.sg.sId}]`, ...params.map(e => typeof e == 'string' ? e : JSON.stringify(e)))
+    this.logHook.emit("log", ...params)
+
+  }
+
+  public error(...params: any[]) {
+    console.error(`[WebRTCPair] [peer:${this.sg.sId}]`, ...params)
+    this.logHook.emit("error", ...params)
+  }
+
+  public get peerStatus() {
+    return this.pc.connectionState
+  }
+
+  public get sessionId() {
+    return this._sessionId
+  }
+  public set sessionId(value) {
+    this.log("[session Update]", value)
+    console.trace("update sessionId")
+    this._sessionId = value
   }
 
   constructor(
@@ -44,37 +61,31 @@ export class WebRTCPair extends AdvanceEventEmitter {
   }
 
   private async _initPeerConnection() {
-
-    this.sessionId = Math.random().toString().slice(2)
-
     let pc = await this.initPC();
-
-
     pc.addEventListener("connectionstatechange", e => {
       if (pc == this.pc) {
-        this.log("[PC] connectionstatechange", pc.connectionState)
+        this.log("[PC]", pc.connectionState)
         this.pcEvent.emit(pc.connectionState);
+        this.emit("peerStatus", pc.connectionState)
       }
     });
-
-    pc.addEventListener("icecandidate", async iceCandidate => {
+    pc.addEventListener("icecandidate", iceCandidate => {
       this.log("[PC] icecandidate", iceCandidate?.candidate)
-      if (pc == this.pc) {
+      if (pc == this.pc)
         iceCandidate.candidate && this.sg.send("candidate", iceCandidate.candidate);
-      }
     });
-
-
     return pc;
   }
 
-  private _processSDP(sdp: RTCSessionDescriptionInit) {
+  private _processSDP(sdp: any) {
     return { sdp: this.processSDP(sdp.sdp + ""), type: sdp.type };
   }
 
   async init() {
 
     this.sg = this.signalPairFactory(this.signal)
+
+    this.running = true
 
     if (this.initiator) {
       this.sg.on(this.ANSWER_SIGNAL, async (answer) => {
@@ -93,12 +104,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.sg.on("candidate", async (candidate) => {
       if (candidate) {
-        try {
-          await this.pc.addIceCandidate(candidate);
-        } catch (e) {
-          console.error(e)
-          console.log(candidate)
-        }
+        await this.pc.addIceCandidate(candidate);
       }
     });
 
@@ -106,6 +112,9 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.pcEvent.on("connected", () => {
       clearTimeout(failedTimeout)
+      this.emit("connected")
+      this.getPCConnectionType()
+        .then(e => this.log("[Conn Type]", e))
     })
 
     this.pcEvent.on("disconnected", () => {
@@ -119,115 +128,231 @@ export class WebRTCPair extends AdvanceEventEmitter {
     })
 
     if (this.initiator) {
-      this.sg.on(this.RESTART_SIGNAL, randomId => {
-        this.restart()
+      setTimeout(() => this.initiatorKeepConnection())
+      this.sg.on("status", status => {
+        this.log(`parnert status ${status}`)
+        // console.log("status", status)
+        // if (status.disconnect)
+        //   this.close()
       })
-    } else {
 
+      this.sg.on("reconnectErr", error => this.error(`reconnectErr`, error))
+    } else {
+      setTimeout(() => this.anwserKeepConnection())
+      this.sg.on("reconnect", () => this.processReconnectSignal())
+    }
+    this.sg.on("handshakeError", error => this.error(`reconnectErr`, error))
+
+
+    setTimeout(() => this.emit("init"), 1)
+  }
+
+  async getPCConnectionType() {
+    await sleep(1000)
+    let pairs = await this.pc
+      .getStats(null)
+      .then((stats) => {
+        let pairs : string[] = []
+        try {
+          stats.forEach((value, key) => {
+            if (
+              (value.type == "candidate-pair" || value.type == "candidate-pair") &&
+              value.nominated
+              && value.state == "succeeded"
+            ) {
+              var remote = stats.get(value.remoteCandidateId);
+              if(remote){
+                pairs.push((remote.ipAddress || remote.ip || "localhost") + ":" +
+                  (remote.portNumber || remote.port) + " " + remote.protocol +
+                  " " + remote.candidateType)
+              }
+            }
+          });
+        } catch (error) {
+          this.log("[STAT] FAILED:", String(error))
+        }
+
+
+        return pairs.join(" / ")
+      })
+      .catch(e => this.log("[STAT] FAILED:", String(e)))
+
+    return pairs
+  }
+
+  async initiatorKeepConnection() {
+    while (this.running && this.initiator) {
+
+      await this.wait("failed", { timeout: Infinity, rejectEvent: "closed" })
+        .catch((err) => this.error(err))
+
+      let retryCount = 0
+
+      while (this.running && this.initiator) {
+        try {
+          this.log(`Reconnecting attemp ${retryCount++}...`)
+          await this.doReconnect()
+          this.log(`Reconnect Successs`)
+          break;
+        } catch (err) {
+          this.log(`Reconnect Fail`, err)
+        }
+
+        if (retryCount > 2) {
+          this.emit("error")
+          break;
+        }
+
+        await sleep(5000)
+      }
+
+      if (!this.running)
+        break
+      await sleep(5000)
     }
   }
 
+  async anwserKeepConnection() {
+    while (this.running && !this.initiator) {
+
+      await this.wait("failed", { timeout: Infinity, rejectEvent: "closed" })
+        .catch((err) => this.error(err))
+
+      let retryCount = 0
+
+      while (this.running && !this.initiator && ["failed", "connected"].includes(this.pc.connectionState)) {
+        try {
+          this.log(`Anwser Reconnecting attemp ${retryCount++}...`)
+          await this.sg.send("ok")
+          await this.sg.wait(this.OFFER_SIGNAL)
+          this.log(`Anwser Reconnect Successs`)
+          break;
+        } catch (err) {
+          this.log(`Anwser Reconnect Timeout`)
+        }
+        await sleep(retryCount * 1000)
+      }
+
+      if (!this.running)
+        break
+      await sleep(5000)
+    }
+  }
+
+
   async processReconnectSignal() {
-    // if (!this.initiator) {
-    //   let randomId = Math.random().toString().slice(2)
+    if (!this.initiator) {
 
-    //   this.log(`Process Reconnect Event`)
+      this.log(`Process Reconnect Event`)
 
-    //   this.pc.close()
-    //   this.pc = await this._initPeerConnection()
-    //   // this.sg.send("ok")
-    //   await this.sg.send("reconnect-ok")
-    //   await this.sg.send("ok", randomId)
-    //   await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: 5000 });
-    //   this.log(`Reconnect get offer`);
-    //   await this.pcEvent.wait("connected", {
-    //     timeoutMsg: "Peer Conection Timeout",
-    //     rejectEvent: "failed",
-    //     rejectMsg: "Peer Connection Failed",
-    //     timeout: 10000
-    //   });
-    //   this.log(`Reconnect success`);
-    // }
+      this.pc.close()
+      // this.sessionId = Math.random().toString().slice(2)
+      this.pc = await this._initPeerConnection()
+      // this.sg.send("ok")
+      await this.sg.send("reconnect-ok", this.sessionId)
+      await this.sg.send("ok", this.sessionId)
+      await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
+      this.log(`Reconnect get offer`);
+      await this.pcEvent.wait("connected", {
+        timeoutMsg: "Peer Conection Timeout",
+        rejectEvent: "failed",
+        rejectMsg: "Peer Connection Failed",
+        timeout: 10000
+      });
+      this.log(`Reconnect success`);
+    }
   }
 
   async doReconnect() {
-    // setTimeout((pc: RTCPeerConnection) => pc.close(), 10000, this.pc);
-    // this.pc = await this._initPeerConnection()
-    // this.sg.send("reconnect")
+    setTimeout((pc: RTCPeerConnection) => pc.close(), 10000, this.pc);
+    // this.sessionId = Math.random().toString().slice(2)
+    this.pc = await this._initPeerConnection()
+    this.sg.send("reconnect", this.sessionId)
+    await this.sg.wait("reconnect-ok", { timeoutMsg: "Wait 'Ok' Timeout", timeout: this.TIMEOUT })
+    let offer = await this.pc.createOffer();
+    offer = this._processSDP(offer);
+    await this.pc.setLocalDescription(offer);
+    this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
+    await this.sg.wait(this.ANSWER_SIGNAL, {
+      timeoutMsg: "Wait 'Answer' Timeout",
+      timeout: this.TIMEOUT,
+      rejectEvent: "reconnectErr"
+    });
+    this.log(`Reconnect get answer`);
 
-    // await this.sg.wait("reconnect-ok", { timeoutMsg: "Wait 'Ok' Timeout", timeout: 5000 })
+    await this.pcEvent.wait("connected", {
+      timeoutMsg: "Peer Conection Timeout",
+      rejectEvent: "failed",
+      rejectMsg: "Peer Connection Failed",
+      timeout: 10000
+    });
 
-    // let offer = await this.pc.createOffer();
-    // offer = this._processSDP(offer);
-    // await this.pc.setLocalDescription(offer);
-    // this.sg.send(this.OFFER_SIGNAL, offer);
-    // await this.sg.wait(this.ANSWER_SIGNAL, {
-    //   timeoutMsg: "Wait 'Answer' Timeout",
-    //   timeout: 5000,
-    //   rejectEvent: "reconnectErr"
-    // });
-    // this.log(`Reconnect get answer`);
+    this.log(`Reconnect success`);
 
-    // await this.pcEvent.wait("connected", {
-    //   timeoutMsg: "Peer Conection Timeout",
-    //   rejectEvent: "failed",
-    //   rejectMsg: "Peer Connection Failed",
-    //   timeout: 10000
-    // });
-
-    // this.log(`Reconnect success`);
-
-  }
-
-  async restart() {
-    // if (this.pc instanceof RTCPeerConnection)
-    //   setTimeout((pc: RTCPeerConnection) => pc.close(), 5000, this.pc)
-
-    // this.pc = await this._initPeerConnection();
-    if (this.initiator) {
-      this.log(`restart ice`);
-
-      let offer = await this.pc.createOffer({ iceRestart: true });
-      offer = this._processSDP(offer);
-      await this.pc.setLocalDescription(offer);
-      this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
-      await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Restart Answer' Timeout", timeout: 5000 });
-      this.log(`get restart answer`);
-      this.log(`restart complete`);
-
-    } else {
-      this.log(`restart ice`);
-      this.sg.send(this.RESTART_SIGNAL, this.sessionId)
-      await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Restart Offer' Timeout", timeout: 5000 });
-      this.log(`restart complete`);
-    }
   }
 
   async start() {
+    try {
+      while (this.running) {
+        try {
+          await this._start()
+          break;
+        } catch (error) {
+          this.pc && setTimeout((pc: RTCPeerConnection) => pc.close(), 10000, this.pc);
+          this.error(error)
+          await sleep(5000)
+        }
+      }
+    } catch (error) {
+      this.error(error)
+      this.pcEvent.emit("failed")
+      throw error
+    }
+  }
+
+  async _start() {
 
 
     this.log(`start`);
 
-    if (this.pc instanceof RTCPeerConnection)
-      setTimeout((pc: RTCPeerConnection) => pc.close(), 5000, this.pc)
-
+    this.sessionId = Math.random().toString().slice(2)
     this.pc = await this._initPeerConnection();
 
-    this.sg.send("ok", this.sessionId);
-    await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: 5000 });
-    this.sg.send("ok", this.sessionId);
-    this.log(`get ok`);
-
     if (this.initiator) {
+
+      this.sg.send("ok", this.sessionId);
+      await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: this.TIMEOUT });
+      this.sg.send("ok", this.sessionId);
+      this.log(`get ok`);
+
+
       let offer = await this.pc.createOffer();
       offer = this._processSDP(offer);
       await this.pc.setLocalDescription(offer);
       this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
-      await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Answer' Timeout", timeout: 5000 });
+      await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Answer' Timeout", timeout: this.TIMEOUT });
       this.log(`get answer`);
     } else {
-      await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: 5000 });
-      this.log(`get offer`);
+
+      this.sg.send("ok", this.sessionId);
+
+      await Promise.race([
+        (async () => {
+          this.sg.send("ok", this.sessionId);
+          await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: this.TIMEOUT });
+          this.sg.send("ok", this.sessionId);
+          this.log(`get ok`);
+
+          await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
+          this.log(`get offer`);
+
+        })(),
+        (async () => {
+          await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
+          this.log(`get offer only`);
+        })(),
+      ])
+
     }
 
     await this.pcEvent
@@ -239,25 +364,18 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
     this.log(`connected`);
 
-    this.log("----------------")
-    this.log("[PC] [Local IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.local?.toJSON())
-    this.log("[PC] [Remote IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.remote?.toJSON())
-
-
-    this.pc.getSenders()[0]?.transport?.iceTransport.addEventListener("selectedcandidatepairchange", event => {
-      this.log("----------------")
-      this.log("[PC] [Local IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.local?.toJSON())
-      this.log("[PC] [Remote IcePair]", this.pc.getSenders()[0]?.transport?.iceTransport?.getSelectedCandidatePair?.()?.remote?.toJSON())
-    })
-
-
-
   }
 
   close() {
     this.log(`Close`, this.targetId)
+    this.running = false
     this.sg.destroy();
     this.pc && this.pc.close();
+    this.pc = <any>null;
     this.emit("closed")
+  }
+
+  restart(){
+    
   }
 }

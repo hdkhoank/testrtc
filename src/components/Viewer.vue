@@ -140,7 +140,7 @@ export default class Viewer extends Vue {
 
   restart() {
     if (this.webRTCPair) {
-      this.webRTCPair.restart();
+      // this.webRTCPair?.restart();
     }
   }
 
