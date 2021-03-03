@@ -60,7 +60,7 @@ export default class Viewer extends Vue {
   partnerId!: string;
 
   @SyncWithRouterQuerySimple("initiator", {
-    defaultValue: false,
+    defaultValue: true,
     map: (e) => e == "true",
     revMap: (e) => String(e),
   })
@@ -217,7 +217,9 @@ export default class Viewer extends Vue {
       this.report({
         id: this.myId,
         ws: this.signal.getStatus(),
-        peerIceState: this.webRTCPair.peerConnection?.iceConnectionState,
+        peerGatSt: this.webRTCPair.peerConnection?.iceGatheringState,
+        peerIceSt: this.webRTCPair.peerConnection?.iceConnectionState,
+        peerStat: this.webRTCPair.peerStat,
         down_video: monitor.getBitrate(this.myId + "_down_video"),
         down_audio: monitor.getBitrate(this.myId + "_down_audio"),
         up_video: monitor.getBitrate(this.myId + "_up_video"),

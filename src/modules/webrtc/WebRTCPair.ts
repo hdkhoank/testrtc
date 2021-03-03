@@ -12,12 +12,17 @@ export class WebRTCPair extends AdvanceEventEmitter {
   private TIMEOUT = 10000;
   private running = false;
   private _sessionId!: string
+  private currentPeerStat!: string
 
   public logHook = new AdvanceEventEmitter()
 
 
   public get peerConnection(){
     return this.pc
+  }
+
+  public get peerStat(){
+    return this.currentPeerStat
   }
 
   public log(...params: any[]) {
@@ -251,14 +256,20 @@ export class WebRTCPair extends AdvanceEventEmitter {
       // this.sg.send("ok")
       await this.sg.send("reconnect-ok", this.sessionId)
       await this.sg.send("ok", this.sessionId)
+      this.currentPeerStat = `WAIT OFFER`
       await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
       this.log(`Reconnect get offer`);
+
+      this.currentPeerStat = `WAIT CONNECTED`
       await this.pcEvent.wait("connected", {
         timeoutMsg: "Peer Conection Timeout",
         rejectEvent: "failed",
         rejectMsg: "Peer Connection Failed",
         timeout: 10000
       });
+
+      this.currentPeerStat = `CONNECTED`
+
       this.log(`Reconnect success`);
     }
   }
@@ -268,17 +279,21 @@ export class WebRTCPair extends AdvanceEventEmitter {
     // this.sessionId = Math.random().toString().slice(2)
     this.pc = await this._initPeerConnection()
     this.sg.send("reconnect", this.sessionId)
+    this.currentPeerStat = `WAIT reconnect-ok`
     await this.sg.wait("reconnect-ok", { timeoutMsg: "Wait 'Ok' Timeout", timeout: this.TIMEOUT })
     let offer = await this.pc.createOffer();
     offer = this._processSDP(offer);
     await this.pc.setLocalDescription(offer);
     this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
+    this.currentPeerStat = `WAIT ANSWER`
     await this.sg.wait(this.ANSWER_SIGNAL, {
       timeoutMsg: "Wait 'Answer' Timeout",
       timeout: this.TIMEOUT,
       rejectEvent: "reconnectErr"
     });
     this.log(`Reconnect get answer`);
+
+    this.currentPeerStat = `WAIT RE-CONNECTED`
 
     await this.pcEvent.wait("connected", {
       timeoutMsg: "Peer Conection Timeout",
@@ -288,6 +303,8 @@ export class WebRTCPair extends AdvanceEventEmitter {
     });
 
     this.log(`Reconnect success`);
+
+    this.currentPeerStat = `RE-CONNECTED`
 
   }
 
@@ -321,6 +338,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
     if (this.initiator) {
 
       this.sg.send("ok", this.sessionId);
+      this.currentPeerStat = `WAIT OK`
       await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: this.TIMEOUT });
       this.sg.send("ok", this.sessionId);
       this.log(`get ok`);
@@ -330,6 +348,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
       offer = this._processSDP(offer);
       await this.pc.setLocalDescription(offer);
       this.sg.send(this.OFFER_SIGNAL, offer, this.sessionId);
+      this.currentPeerStat = `WAIT ANSWER`
       await this.sg.wait(this.ANSWER_SIGNAL, { timeoutMsg: "Wait 'Answer' Timeout", timeout: this.TIMEOUT });
       this.log(`get answer`);
     } else {
@@ -339,21 +358,26 @@ export class WebRTCPair extends AdvanceEventEmitter {
       await Promise.race([
         (async () => {
           this.sg.send("ok", this.sessionId);
+          this.currentPeerStat = `WAIT OK`
           await this.sg.wait("ok", { timeoutMsg: "Wait 'ok' Timeout", timeout: this.TIMEOUT });
           this.sg.send("ok", this.sessionId);
           this.log(`get ok`);
 
+          this.currentPeerStat = `WAIT OFFER`
           await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
           this.log(`get offer`);
 
         })(),
         (async () => {
+          this.currentPeerStat = `WAIT OFFER`
           await this.sg.wait(this.OFFER_SIGNAL, { timeoutMsg: "Wait 'Offer' Timeout", timeout: this.TIMEOUT });
           this.log(`get offer only`);
         })(),
       ])
 
     }
+
+    this.currentPeerStat = `WAIT CONNECTED`
 
     await this.pcEvent
       .wait("connected", {
@@ -363,6 +387,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
       });
 
     this.log(`connected`);
+    this.currentPeerStat = `CONNECTED`
 
   }
 
