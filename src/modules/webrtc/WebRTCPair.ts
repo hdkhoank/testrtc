@@ -17,11 +17,11 @@ export class WebRTCPair extends AdvanceEventEmitter {
   public logHook = new AdvanceEventEmitter()
 
 
-  public get peerConnection(){
+  public get peerConnection() {
     return this.pc
   }
 
-  public get peerStat(){
+  public get peerStat() {
     return this.currentPeerStat
   }
 
@@ -157,7 +157,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
     let pairs = await this.pc
       .getStats(null)
       .then((stats) => {
-        let pairs : string[] = []
+        let pairs: string[] = []
         try {
           stats.forEach((value, key) => {
             if (
@@ -166,7 +166,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
               && value.state == "succeeded"
             ) {
               var remote = stats.get(value.remoteCandidateId);
-              if(remote){
+              if (remote) {
                 pairs.push((remote.ipAddress || remote.ip || "localhost") + ":" +
                   (remote.portNumber || remote.port) + " " + remote.protocol +
                   " " + remote.candidateType)
@@ -190,6 +190,8 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
       await this.wait("failed", { timeout: Infinity, rejectEvent: "closed" })
         .catch((err) => this.error(err))
+
+      this.currentPeerStat = `RECONNECTING`
 
       let retryCount = 0
 
@@ -222,6 +224,8 @@ export class WebRTCPair extends AdvanceEventEmitter {
 
       await this.wait("failed", { timeout: Infinity, rejectEvent: "closed" })
         .catch((err) => this.error(err))
+
+      this.currentPeerStat = `RECONNECTING`
 
       let retryCount = 0
 
@@ -400,7 +404,7 @@ export class WebRTCPair extends AdvanceEventEmitter {
     this.emit("closed")
   }
 
-  restart(){
-    
+  restart() {
+
   }
 }
