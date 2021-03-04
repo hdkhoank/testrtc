@@ -90,7 +90,7 @@ export default class Viewer extends Vue {
     if (!this.webRTCPair) {
       this.webRTCPair = new (class extends WebRTCPair {
         signalPairFactory(signal: Signal) {
-          return signal.getSignalPair(this.targetId).getSignalPair(sessionId);
+          return signal.getSignalPair(this.targetId).getSignalPair("mainstream").getSignalPair(sessionId);
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
         let stream = await navigator.mediaDevices.getUserMedia({
