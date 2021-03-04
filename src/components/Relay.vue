@@ -208,7 +208,7 @@ export default class Viewer extends Vue {
       peer.log("Init loop check audio bitrate");
       clearInterval(audioCheckInterval);
       audioCheckInterval = setInterval(() => {
-        if (monitor.getBitrate(this.myId) > 0) {
+        if (monitor.getBitrate(this.myId + "_down_audio") > 0) {
           audioLostCounter = 0;
         } else {
           audioLostCounter++;
