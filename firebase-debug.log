@@ -1,0 +1,37 @@
+[debug] [2021-03-05T07:17:23.221Z] ----------------------------------------------------------------------
+[debug] [2021-03-05T07:17:23.222Z] Command:       /Users/datvo/.fnm/node-versions/v12.18.0/installation/bin/node /usr/local/bin/firebase deploy --only hosting:webrtc-benkmark
+[debug] [2021-03-05T07:17:23.222Z] CLI Version:   7.6.2
+[debug] [2021-03-05T07:17:23.222Z] Platform:      darwin
+[debug] [2021-03-05T07:17:23.222Z] Node Version:  v12.18.0
+[debug] [2021-03-05T07:17:23.223Z] Time:          Fri Mar 05 2021 14:17:23 GMT+0700 (Indochina Time)
+[debug] [2021-03-05T07:17:23.223Z] ----------------------------------------------------------------------
+[debug] [2021-03-05T07:17:23.223Z] 
+[debug] [2021-03-05T07:17:23.233Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2021-03-05T07:17:23.234Z] > authorizing via signed-in user
+[debug] [2021-03-05T07:17:23.234Z] [iam] checking project livestreaming-241004 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2021-03-05T07:17:23.235Z] > refreshing access token with scopes: ["email","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","openid"]
+[debug] [2021-03-05T07:17:23.235Z] >>> HTTP REQUEST POST https://www.googleapis.com/oauth2/v3/token  
+ <request body omitted>
+[debug] [2021-03-05T07:17:23.772Z] <<< HTTP RESPONSE 200
+[debug] [2021-03-05T07:17:23.802Z] >>> HTTP REQUEST POST https://cloudresourcemanager.googleapis.com/v1/projects/livestreaming-241004:testIamPermissions  
+
+[debug] [2021-03-05T07:17:25.373Z] <<< HTTP RESPONSE 200
+[debug] [2021-03-05T07:17:25.375Z] >>> HTTP REQUEST GET https://firebase.googleapis.com/v1beta1/projects/livestreaming-241004  
+ 
+[debug] [2021-03-05T07:17:26.066Z] <<< HTTP RESPONSE 200
+[info] 
+[info] === Deploying to 'livestreaming-241004'...
+[info] 
+[info] i  deploying hosting
+[debug] [2021-03-05T07:17:26.069Z] >>> HTTP REQUEST POST https://firebasehosting.googleapis.com/v1beta1/sites/webrtc-benkmark/versions  
+
+[debug] [2021-03-05T07:17:28.121Z] <<< HTTP RESPONSE 200
+[info] i  hosting[webrtc-benkmark]: beginning deploy...
+[info] i  hosting[webrtc-benkmark]: found 10 files in dist
+[debug] [2021-03-05T07:17:28.278Z] [hosting] hash cache [ZGlzdA] stored for 10 files
+[debug] [2021-03-05T07:17:28.279Z] [hosting][hash queue][FINAL]
+[debug] [2021-03-05T07:17:28.279Z] >>> HTTP REQUEST POST https://firebasehosting.googleapis.com/v1beta1/sites/webrtc-benkmark/versions/15c4a2577ad1c425:populateFiles  
+ <request body omitted>
+[debug] [2021-03-05T07:17:30.198Z] <<< HTTP RESPONSE 200
+[debug] [2021-03-05T07:17:30.202Z] [hosting][populate queue][FINAL]
+[debug] [2021-03-05T07:17:30.202Z] [hosting] uploads queued: 5
