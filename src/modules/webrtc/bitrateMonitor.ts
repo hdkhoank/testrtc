@@ -166,10 +166,10 @@ export class Monitor {
 
   addMonitor(id: string, obj: RTCRtpReceiver | RTCRtpSender) {
     if (obj instanceof RTCRtpReceiver) {
-      this.monitors[id] = new BitrateMonitor(5000)
+      this.monitors[id] = new BitrateMonitor(1000)
       this.monitors[id].monitorReciver(obj)
     } else {
-      this.monitors[id] = new BitrateMonitor(5000)
+      this.monitors[id] = new BitrateMonitor(1000)
       this.monitors[id].monitorSender(obj)
     }
   }
