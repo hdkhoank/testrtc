@@ -96,10 +96,7 @@ export default class Viewer extends Vue {
             .getSignalPair(sessionId);
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
-        let stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 200 },
-          audio: true,
-        });
+        let stream = await navigator.mediaDevices.getUserMedia({audio:true, video: true});
 
         let pc = new RTCPeerConnection({
           iceServers: [

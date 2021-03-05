@@ -66,20 +66,28 @@ export class WebRTCPair extends AdvanceEventEmitter {
   }
 
   private async _initPeerConnection() {
-    let pc = await this.initPC();
-    pc.addEventListener("connectionstatechange", e => {
-      if (pc == this.pc) {
-        this.log("[PC]", pc.connectionState)
-        this.pcEvent.emit(pc.connectionState);
-        this.emit("peerStatus", pc.connectionState)
-      }
-    });
-    pc.addEventListener("icecandidate", iceCandidate => {
-      this.log("[PC] icecandidate", iceCandidate?.candidate)
-      if (pc == this.pc)
-        iceCandidate.candidate && this.sg.send("candidate", iceCandidate.candidate);
-    });
-    return pc;
+    try {
+      let pc = await this.initPC();
+      pc.addEventListener("connectionstatechange", e => {
+        if (pc == this.pc) {
+          this.log("[PC]", pc.connectionState)
+          this.pcEvent.emit(pc.connectionState);
+          this.emit("peerStatus", pc.connectionState)
+        }
+      });
+      pc.addEventListener("icecandidate", iceCandidate => {
+        this.log("[PC] icecandidate", iceCandidate?.candidate)
+        if (pc == this.pc)
+          iceCandidate.candidate && this.sg.send("candidate", iceCandidate.candidate);
+      });
+
+      this.log("[PC] Init PC Success")      
+      return pc;
+      
+    } catch (error) {
+      this.log("[PC] Init PC Error", String(error))      
+      throw error
+    }
   }
 
   private _processSDP(sdp: any) {
