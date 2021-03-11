@@ -43,7 +43,6 @@ import { monitor } from "../modules/webrtc/bitrateMonitor";
 
 @Component
 export default class MRelay extends Vue {
-  
   @Prop() private role!: string;
 
   @Prop() private streamId!: string;
@@ -82,19 +81,19 @@ export default class MRelay extends Vue {
     return new Signal(this.myId, this.signalURL);
   }
 
-  get enableDownloadMonitor(){
-    return this.role == 'source'
+  get enableDownloadMonitor() {
+    return this.role == "source";
   }
 
-  get enableUploadMonitor(){
-    return this.role == 'dest'
+  get enableUploadMonitor() {
+    return this.role == "dest";
   }
 
   @mounted
   async start() {
     let sessionId = this.sessionId;
-    let streamId = this.streamId
-    let role = this.role
+    let streamId = this.streamId;
+    let role = this.role;
     if (this.webRTCPair) {
       this.webRTCPair.close();
       this.webRTCPair = null;
@@ -110,7 +109,10 @@ export default class MRelay extends Vue {
             .getSignalPair(sessionId);
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
-        let stream = await navigator.mediaDevices.getUserMedia({audio:true, video: true});
+        let stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true,
+        });
 
         let pc = new RTCPeerConnection({
           iceServers: [
@@ -161,6 +163,10 @@ export default class MRelay extends Vue {
 
       this.initMonitor(this.webRTCPair);
 
+      this.$once("unmount", () => {
+        this.stop()
+      });
+
       await this.webRTCPair.start();
     }
   }
@@ -194,43 +200,45 @@ export default class MRelay extends Vue {
       audioLostCounter = 0,
       isVideoPlaying = false;
 
-    this.enableDownloadMonitor && peer.on("init", () => {
-      peer.log("Init loop check framerate");
-      clearInterval(videoCheckInterval);
-      videoCheckInterval = setInterval(() => {
-        let video = this.videoElement;
-        if (video.currentTime != lastTimeFrame) {
-          lastTimeFrame = video.currentTime;
-          videoLostCounter = 0;
-          isVideoPlaying = true;
-        } else {
-          videoLostCounter++;
-          if (videoLostCounter >= 3) {
-            isVideoPlaying = false;
+    this.enableDownloadMonitor &&
+      peer.on("init", () => {
+        peer.log("Init loop check framerate");
+        clearInterval(videoCheckInterval);
+        videoCheckInterval = setInterval(() => {
+          let video = this.videoElement;
+          if (video.currentTime != lastTimeFrame) {
+            lastTimeFrame = video.currentTime;
             videoLostCounter = 0;
-            peer.log("Video framerate is not updated, restarting ...");
-            peer.emit("failed");
+            isVideoPlaying = true;
+          } else {
+            videoLostCounter++;
+            if (videoLostCounter >= 3) {
+              isVideoPlaying = false;
+              videoLostCounter = 0;
+              peer.log("Video framerate is not updated, restarting ...");
+              peer.emit("failed");
+            }
           }
-        }
-      }, 4000);
-    });
+        }, 4000);
+      });
 
-    this.enableDownloadMonitor && peer.on("init", () => {
-      peer.log("Init loop check audio bitrate");
-      clearInterval(audioCheckInterval);
-      audioCheckInterval = setInterval(() => {
-        if (monitor.getBitrate(this.myId + "_down_audio") > 0) {
-          audioLostCounter = 0;
-        } else {
-          audioLostCounter++;
-          if (audioLostCounter >= 6) {
+    this.enableDownloadMonitor &&
+      peer.on("init", () => {
+        peer.log("Init loop check audio bitrate");
+        clearInterval(audioCheckInterval);
+        audioCheckInterval = setInterval(() => {
+          if (monitor.getBitrate(this.myId + "_down_audio") > 0) {
             audioLostCounter = 0;
-            peer.log("Audio data fail to received, restarting ...");
-            peer.emit("failed");
+          } else {
+            audioLostCounter++;
+            if (audioLostCounter >= 6) {
+              audioLostCounter = 0;
+              peer.log("Audio data fail to received, restarting ...");
+              peer.emit("failed");
+            }
           }
-        }
-      }, 4000);
-    });
+        }, 4000);
+      });
 
     reportInterval = setInterval(() => {
       this.report({
@@ -249,6 +257,15 @@ export default class MRelay extends Vue {
     }, 1000);
 
     peer.on("closed", () => {
+      clearInterval(videoCheckInterval);
+      clearInterval(audioCheckInterval);
+      monitor.removeMonitor(this.myId + "_down_video");
+      monitor.removeMonitor(this.myId + "_down_audio");
+      monitor.removeMonitor(this.myId + "_up_video");
+      monitor.removeMonitor(this.myId + "_up_audio");
+    });
+
+    this.$once("unmount", () => {
       clearInterval(videoCheckInterval);
       clearInterval(audioCheckInterval);
       monitor.removeMonitor(this.myId + "_down_video");
