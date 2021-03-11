@@ -4,7 +4,7 @@
       v-for="i in count"
       :key="i"
       :streamId="streamId"
-      :role="'self'"
+      :role="i == 0 ? 'dest' : 'source'"
       @report="onReport(i, $event)"
     >
     </MRelay>
@@ -13,7 +13,6 @@
 
 <script lang="ts">
 import { Component, Prop, Vue, Ref } from "vue-property-decorator";
-
 import MRelay from "./MRelay.vue";
 import { mounted, SyncWithRouterQuerySimple } from "../utils";
 import IO from "socket.io-client";
@@ -23,7 +22,7 @@ import IO from "socket.io-client";
     MRelay,
   },
 })
-export default class Relays extends Vue {
+export default class MRelays extends Vue {
   @SyncWithRouterQuerySimple("reportURL", {
     defaultValue: "http://localhost:8000",
   })

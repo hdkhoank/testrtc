@@ -35,6 +35,11 @@ const routes: Array<RouteConfig> = [
     name: 'Relays',
     component: () => import(/* webpackChunkName: "about" */ '../components/Relays.vue')
   },
+  {
+    path: '/mrelays',
+    name: 'Relays',
+    component: () => import(/* webpackChunkName: "about" */ '../components/MRelays.vue')
+  },
 ]
 
 const router = new VueRouter({
