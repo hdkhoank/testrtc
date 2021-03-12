@@ -240,7 +240,7 @@ export default class MRelay extends Vue {
         }, 4000);
       });
 
-    reportInterval = setInterval(() => {
+    reportInterval = this.enableDownloadMonitor && setInterval(() => {
       this.report({
         id: this.myId,
         ws: this.signal.getStatus(),
