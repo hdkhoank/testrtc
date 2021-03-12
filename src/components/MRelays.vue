@@ -6,7 +6,7 @@
       v-for="i in count"
       :key="i"
       :streamId="streamId"
-      :role="i == 0 ? 'dest' : 'source'"
+      :role="i == 1 ? 'source' : 'dest'"
       @report="onReport(i, $event)"
     >
     </MRelay>

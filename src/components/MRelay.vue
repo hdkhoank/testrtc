@@ -78,15 +78,15 @@ export default class MRelay extends Vue {
   mounted() {}
 
   get signal() {
-    return new Signal(this.myId, this.signalURL);
+    return new Signal(this.myId + "_" + this.role, this.signalURL);
   }
 
   get enableDownloadMonitor() {
-    return this.role == "source";
+    return this.role != "source";
   }
 
   get enableUploadMonitor() {
-    return this.role == "dest";
+    return this.role != "dest";
   }
 
   @mounted
