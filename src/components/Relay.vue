@@ -273,7 +273,7 @@ export default class Viewer extends Vue {
     });
 
     reportInterval = setInterval(() => {
-      this.report({
+      this.webRTCPair && this.report({
         id: this.myId,
         ws: this.signal.getStatus(),
         peerGatSt: this.webRTCPair.peerConnection?.iceGatheringState,
@@ -291,6 +291,7 @@ export default class Viewer extends Vue {
     peer.on("closed", () => {
       clearInterval(videoCheckInterval);
       clearInterval(audioCheckInterval);
+      clearInterval(reportInterval);
       monitor.removeMonitor(this.myId + "_down_video");
       monitor.removeMonitor(this.myId + "_down_audio");
       monitor.removeMonitor(this.myId + "_up_video");
