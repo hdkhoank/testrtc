@@ -121,10 +121,7 @@ export default class MRelay extends Vue {
             .getSignalPair(sessionId);
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
-        let stream = await navigator.mediaDevices.getUserMedia({
-          audio: this.audioEnable,
-          video: this.videoEnable,
-        });
+
 
         let pc = new RTCPeerConnection({
           iceServers: [
@@ -146,10 +143,20 @@ export default class MRelay extends Vue {
             },
           ],
         });
-
-        for (let track of stream.getTracks()) {
-          let sender = pc.addTrack(track);
-          monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
+        if(this.enableUploadMonitor){
+          let stream = await navigator.mediaDevices.getUserMedia({
+            audio: this.audioEnable,
+            video: this.videoEnable,
+          });
+  
+          for (let track of stream.getTracks()) {
+            let sender = pc.addTrack(track);
+            monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
+          }
+        }else if(this.enableDownloadMonitor){
+          
+          this.videoEnable && pc.addTransceiver("video",{direction:"recvonly"});
+          this.audioEnable && pc.addTransceiver("audio",{direction:"recvonly"});
         }
 
         let trackHandlerTimeout: number,
