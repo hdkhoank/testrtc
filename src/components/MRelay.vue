@@ -206,7 +206,7 @@ export default class MRelay extends Vue {
         clearInterval(videoCheckInterval);
         videoCheckInterval = setInterval(() => {
           let video = this.videoElement;
-          if (video.currentTime != lastTimeFrame) {
+          if (video && video?.currentTime != lastTimeFrame) {
             lastTimeFrame = video.currentTime;
             videoLostCounter = 0;
             isVideoPlaying = true;

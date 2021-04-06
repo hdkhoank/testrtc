@@ -1,5 +1,7 @@
 <template>
   <div>
+    <input v-model="n" placeholder="Peer count" />
+    <p />
     <MRelay
       v-for="i in count"
       :key="i"

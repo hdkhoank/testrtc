@@ -20,9 +20,11 @@ export function SyncWithRouterQuerySimple<T>(
     options.computed[key] = {
       get() {
         try {
-          var temp = map(JSON.parse((<any>this).$route.query[queryKey] || ''))
-          return validate(temp as T) ? (temp || defaultValue) : defaultValue
+          var temp = map(JSON.parse((<any>this).$route.query[queryKey]))
+          return validate(temp as T) ? (temp ?? defaultValue) : defaultValue
         } catch (error) {
+          // console.log((<any>this).$route.query,queryKey, (<any>this).$route.query[queryKey])
+          // console.error(error)
           return defaultValue
         }
       },
@@ -41,6 +43,17 @@ export function SyncWithRouterQuerySimple<T>(
   })
 }
 
+
+export function SyncBoolWithRouter(
+  queryKey: string,
+  defaultValue: boolean = false
+) {
+  return SyncWithRouterQuerySimple(queryKey, {
+    defaultValue: defaultValue,
+    map: (e) => e == "true",
+    revMap: (e) => String(e),
+  })
+}
 
 
 export const mounted = createDecorator((componentOptions, key) => {

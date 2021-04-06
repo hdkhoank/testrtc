@@ -2,14 +2,40 @@
   <div class="hello">
     <div>
       <input v-model="myId" placeholder="my ID" />
+      &nbsp;
       <input v-model="partnerId" placeholder="partner ID" />
-      <input type="checkbox" v-model="initiator" />
+      <br/>
+      <span>
+        <input type="checkbox" id="initiator" name="initiator" v-model="initiator">
+        <label for="initiator">initiator</label>
+      </span>
+      <br/>
+      <span>
+        <input type="checkbox" id="videoEnable" name="videoEnable" v-model="videoEnable">
+        <label for="videoEnable">videoEnable</label>
+      </span>
+      &nbsp;
+      <span>
+        <input type="checkbox" id="audioEnable" name="audioEnable" v-model="audioEnable">
+        <label for="audioEnable">audioEnable</label>
+      </span>
+      <br/>
+      <span>
+        <input type="checkbox" id="autoStart" name="autoStart" v-model="autoStart">
+        <label for="autoStart">autoStart</label>
+      </span>
+      &nbsp;
+      <span>
+        <input type="checkbox" id="autoRestartEnable" name="autoRestartEnable" v-model="autoRestartEnable">
+        <label for="autoRestartEnable">autoRestartEnable</label>
+      </span>
+
     </div>
     <p />
     <div>
       <button @click="start" :disabled="webRTCPair">Start</button>
       <button @click="stop" :disabled="!webRTCPair">Stop</button>
-      <!-- <button @click="restart" :disabled="!webRTCPair">Restart</button> -->
+      <button @click="restart" :disabled="!webRTCPair">Restart</button>
     </div>
     <p />
     <pre
@@ -32,13 +58,18 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  text-align: left;
 }
 </style>
 <script lang="ts">
 import { Component, Prop, Vue, Ref, Emit } from "vue-property-decorator";
 import { WebRTCPair } from "../modules/webrtc/WebRTCPair";
 import { Signal } from "../modules/webrtc/Signal";
-import { mounted, SyncWithRouterQuerySimple } from "../utils";
+import {
+  mounted,
+  SyncBoolWithRouter,
+  SyncWithRouterQuerySimple,
+} from "../utils";
 import { monitor } from "../modules/webrtc/bitrateMonitor";
 
 @Component
@@ -64,22 +95,38 @@ export default class Viewer extends Vue {
   })
   partnerId!: string;
 
-  @SyncWithRouterQuerySimple("initiator", {
-    defaultValue: true,
-    map: (e) => e == "true",
-    revMap: (e) => String(e),
-  })
+  @SyncBoolWithRouter("videoEnable", true)
+  videoEnable!: boolean;
+
+  @SyncBoolWithRouter("audioEnable", true)
+  audioEnable!: boolean;
+
+  @SyncBoolWithRouter("autoStart", true)
+  autoStart!: boolean;
+
+  @SyncBoolWithRouter("autoRestartEnable", true)
+  autoRestartEnable!: boolean;
+
+  @SyncBoolWithRouter("initiator", true)
   initiator!: boolean;
 
   logs: string[] = [];
 
   mounted() {}
 
+  get canStart() {
+    return this.audioEnable || this.videoEnable;
+  }
+
   get signal() {
     return new Signal(this.myId, this.signalURL);
   }
 
   @mounted
+  shouldAutoStart() {
+    this.autoStart && this.start();
+  }
+
   async start() {
     let sessionId = this.sessionId;
     if (this.webRTCPair) {
@@ -96,7 +143,10 @@ export default class Viewer extends Vue {
             .getSignalPair(sessionId);
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
-        let stream = await navigator.mediaDevices.getUserMedia({audio:true, video: true});
+        let stream = await navigator.mediaDevices.getUserMedia({
+          audio: this.audioEnable,
+          video: this.videoEnable,
+        });
 
         let pc = new RTCPeerConnection({
           iceServers: [
@@ -185,7 +235,9 @@ export default class Viewer extends Vue {
       clearInterval(videoCheckInterval);
       videoCheckInterval = setInterval(() => {
         let video = this.videoElement;
-        if (video.currentTime != lastTimeFrame) {
+        if(!(this.autoRestartEnable && this.videoEnable))
+          return;
+        if (video && video?.currentTime != lastTimeFrame) {
           lastTimeFrame = video.currentTime;
           videoLostCounter = 0;
           isVideoPlaying = true;
@@ -205,6 +257,8 @@ export default class Viewer extends Vue {
       peer.log("Init loop check audio bitrate");
       clearInterval(audioCheckInterval);
       audioCheckInterval = setInterval(() => {
+        if(!(this.autoRestartEnable && this.audioEnable))
+          return;
         if (monitor.getBitrate(this.myId + "_down_audio") > 0) {
           audioLostCounter = 0;
         } else {
@@ -244,7 +298,11 @@ export default class Viewer extends Vue {
     });
   }
 
-  reconnect() {}
+  restart() {
+    if (this.webRTCPair) {
+      this.webRTCPair.emit("failed");
+    }
+  }
 
   @Emit("report")
   report($event) {}
