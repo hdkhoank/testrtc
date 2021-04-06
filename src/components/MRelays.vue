@@ -1,12 +1,35 @@
 <template>
   <div>
     <input v-model="n" placeholder="Peer count" />
+    <span>
+      <input type="checkbox" id="videoEnable" name="videoEnable" v-model="videoEnable">
+      <label for="videoEnable">videoEnable</label>
+    </span>
+    &nbsp;
+    <span>
+      <input type="checkbox" id="audioEnable" name="audioEnable" v-model="audioEnable">
+      <label for="audioEnable">audioEnable</label>
+    </span>
+    <br/>
+    <span>
+      <input type="checkbox" id="autoStart" name="autoStart" v-model="autoStart">
+      <label for="autoStart">autoStart</label>
+    </span>
+    &nbsp;
+    <span>
+      <input type="checkbox" id="autoRestartEnable" name="autoRestartEnable" v-model="autoRestartEnable">
+      <label for="autoRestartEnable">autoRestartEnable</label>
+    </span>
     <p/>
     <MRelay
       v-for="i in count"
       :key="i"
       :streamId="streamId"
       :role="i == 1 ? 'source' : 'dest'"
+      :videoEnable="videoEnable"
+      :audioEnable="audioEnable"
+      :autoStart="autoStart"
+      :autoRestartEnable="autoRestartEnable"
       @report="onReport(i, $event)"
     >
     </MRelay>
@@ -16,7 +39,7 @@
 <script lang="ts">
 import { Component, Prop, Vue, Ref } from "vue-property-decorator";
 import MRelay from "./MRelay.vue";
-import { mounted, SyncWithRouterQuerySimple } from "../utils";
+import { mounted, SyncBoolWithRouter, SyncWithRouterQuerySimple } from "../utils";
 import IO from "socket.io-client";
 
 @Component({
@@ -36,6 +59,18 @@ export default class MRelays extends Vue {
   n!: string;
 
   streamId = Math.random().toString().slice(2);
+
+  @SyncBoolWithRouter("videoEnable", true)
+  videoEnable!: boolean;
+
+  @SyncBoolWithRouter("audioEnable", true)
+  audioEnable!: boolean;
+
+  @SyncBoolWithRouter("autoStart", true)
+  autoStart!: boolean;
+
+  @SyncBoolWithRouter("autoRestartEnable", true)
+  autoRestartEnable!: boolean;
 
   get count() {
     return parseInt(this.n);

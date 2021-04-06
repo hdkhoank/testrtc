@@ -7,9 +7,9 @@
     </div>
     <p />
     <div>
-      <button @click="start" :disabled="webRTCPair">Start</button>
+      <button @click="start" :disabled="!canStart || webRTCPair">Start</button>
       <button @click="stop" :disabled="!webRTCPair">Stop</button>
-      <!-- <button @click="restart" :disabled="!webRTCPair">Restart</button> -->
+      <button @click="restart" :disabled="!webRTCPair">Restart</button>
     </div>
     <p />
     <pre
@@ -46,6 +46,14 @@ export default class MRelay extends Vue {
   @Prop() private role!: string;
 
   @Prop() private streamId!: string;
+  @Prop() private videoEnable!: boolean;
+  @Prop() private audioEnable!: boolean;
+  @Prop() private autoStart!: boolean;
+  @Prop() private autoRestartEnable!: boolean;
+
+  get canStart() {
+    return this.audioEnable || this.videoEnable;
+  }
 
   @Ref("video")
   video!: HTMLVideoElement;
@@ -90,6 +98,10 @@ export default class MRelay extends Vue {
   }
 
   @mounted
+  shouldAutoStart() {
+    this.autoStart && this.start();
+  }
+
   async start() {
     let sessionId = this.sessionId;
     let streamId = this.streamId;
@@ -110,8 +122,8 @@ export default class MRelay extends Vue {
         }
       })(this.partnerId, this.signal, this.initiator, async () => {
         let stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: true,
+          audio: this.audioEnable,
+          video: this.videoEnable,
         });
 
         let pc = new RTCPeerConnection({
@@ -139,6 +151,7 @@ export default class MRelay extends Vue {
           let sender = pc.addTrack(track);
           monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
         }
+
         let trackHandlerTimeout: number,
           tracks: MediaStreamTrack[] = [];
 
@@ -205,6 +218,8 @@ export default class MRelay extends Vue {
         peer.log("Init loop check framerate");
         clearInterval(videoCheckInterval);
         videoCheckInterval = setInterval(() => {
+          if(!(this.autoRestartEnable && this.videoEnable))
+            return;
           let video = this.videoElement;
           if (video && video?.currentTime != lastTimeFrame) {
             lastTimeFrame = video.currentTime;
@@ -227,6 +242,8 @@ export default class MRelay extends Vue {
         peer.log("Init loop check audio bitrate");
         clearInterval(audioCheckInterval);
         audioCheckInterval = setInterval(() => {
+          if(!(this.autoRestartEnable && this.audioEnable))
+            return;
           if (monitor.getBitrate(this.myId + "_down_audio") > 0) {
             audioLostCounter = 0;
           } else {
@@ -259,6 +276,7 @@ export default class MRelay extends Vue {
     peer.on("closed", () => {
       clearInterval(videoCheckInterval);
       clearInterval(audioCheckInterval);
+      clearInterval(reportInterval);
       monitor.removeMonitor(this.myId + "_down_video");
       monitor.removeMonitor(this.myId + "_down_audio");
       monitor.removeMonitor(this.myId + "_up_video");
@@ -268,6 +286,7 @@ export default class MRelay extends Vue {
     this.$once("unmount", () => {
       clearInterval(videoCheckInterval);
       clearInterval(audioCheckInterval);
+      clearInterval(reportInterval);
       monitor.removeMonitor(this.myId + "_down_video");
       monitor.removeMonitor(this.myId + "_down_audio");
       monitor.removeMonitor(this.myId + "_up_video");
@@ -276,6 +295,10 @@ export default class MRelay extends Vue {
   }
 
   reconnect() {}
+
+  restart() {
+    this.webRTCPair?.emit("failed");
+  }
 
   @Emit("report")
   report($event) {}
