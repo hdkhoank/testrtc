@@ -33,7 +33,7 @@
     </div>
     <p />
     <div>
-      <button @click="start" :disabled="webRTCPair">Start</button>
+      <button @click="start" :disabled="!canStart || webRTCPair">Start</button>
       <button @click="stop" :disabled="!webRTCPair">Stop</button>
       <button @click="restart" :disabled="!webRTCPair">Restart</button>
     </div>
