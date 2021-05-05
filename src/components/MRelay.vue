@@ -25,7 +25,7 @@
       "
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
-    <video v-for="i in countVideo" :key="i" ref="video" width="400" height="150" muted autoplay controls />
+    <video v-for="i in showVideos" :key="i.deviceId" :data-id='i.deviceId' ref="video" width="400" height="150" muted autoplay controls />
   </div>
 </template>
 <style scoped>
@@ -101,8 +101,8 @@ export default class MRelay extends Vue {
     return this.role != "dest";
   }
   
-  get countVideo() {
-    return this.enableUploadMonitor ? 1 : this.deviceIds.filter(stream => stream);
+  get showVideos() {
+    return this.enableUploadMonitor ? [ { deviceId: this.deviceId } ] : this.deviceIds.filter(stream => stream);
   }
 
   @mounted
@@ -172,9 +172,10 @@ export default class MRelay extends Vue {
             monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
           }
         }else if(this.enableDownloadMonitor){
-          
-          this.videoEnable && pc.addTransceiver("video",{direction:"recvonly"});
-          this.audioEnable && pc.addTransceiver("audio",{direction:"recvonly"});
+          for (let i in this.showVideos) {
+            this.videoEnable && pc.addTransceiver("video",{direction:"recvonly"});
+            this.audioEnable && pc.addTransceiver("audio",{direction:"recvonly"});
+          }
         }
 
         let trackHandlerTimeout: number,
@@ -190,7 +191,8 @@ export default class MRelay extends Vue {
 
           trackHandlerTimeout = setTimeout(() => {
             let stream = new MediaStream(tracks);
-            this.video.srcObject = stream;
+            let video = (this.video as any).find(stream => stream.dataset.id == event.track.id);
+            video.srcObject = stream;
             console.log(tracks);
             this.logs.push("PC Tracks ");
           }, 100);
