@@ -47,6 +47,7 @@ export default class MRelay extends Vue {
   @Prop() private role!: string;
 
   @Prop() private streamId!: string;
+  @Prop() private deviceIds!: any;
   @Prop() private videoEnable!: boolean;
   @Prop() private audioEnable!: boolean;
   @Prop() private autoStart!: boolean;
@@ -107,8 +108,16 @@ export default class MRelay extends Vue {
 
   async start() {
     let sessionId = this.sessionId;
-    let streamId = `${this.deviceId}-${this.myId}` || this.streamId;
+    let streamId = '';
     let role = this.role;
+
+    if (this.enableUploadMonitor) {
+      streamId = `${this.deviceId}-${this.myId}` || this.streamId;
+      this.reportDevice(streamId);
+    } else if(this.enableDownloadMonitor){
+      streamId = this.deviceIds.filter(stream => stream);
+    }
+
     if (this.webRTCPair) {
       this.webRTCPair.close();
       this.webRTCPair = null;
@@ -312,6 +321,9 @@ export default class MRelay extends Vue {
 
   @Emit("report")
   report($event) {}
+
+  @Emit("device")
+  reportDevice($event) {}
 }
 </script>
 

@@ -25,12 +25,14 @@
       v-for="i in count"
       :key="i"
       :streamId="streamId"
+      :deviceIds='deviceIds'
       :role="i != count ? 'source' : 'dest'"
       :videoEnable="videoEnable"
       :audioEnable="audioEnable"
       :autoStart="autoStart"
       :autoRestartEnable="autoRestartEnable"
       @report="onReport(i, $event)"
+      @device="onDevice(i, $event)"
     >
     </MRelay>
   </div>
@@ -81,6 +83,13 @@ export default class MRelays extends Vue {
   onReport(i, event) {
     this.reportData = this.reportData || [];
     this.reportData[i] = event;
+  }
+
+  deviceIds: any[] = [];
+
+  onDevice(i, event) {
+    this.deviceIds = this.deviceIds || [];
+    this.deviceIds[i] = event;
   }
 
   @mounted
