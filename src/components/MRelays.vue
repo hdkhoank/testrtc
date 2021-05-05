@@ -89,7 +89,7 @@ export default class MRelays extends Vue {
 
   onDevice(i, event) {
     this.deviceIds = this.deviceIds || [];
-    this.deviceIds[i] = event;
+    this.$set(this.deviceIds, i, event);
   }
 
   @mounted

@@ -25,7 +25,7 @@
       "
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
-    <video ref="video" width="400" height="150" muted autoplay controls />
+    <video v-for="i in countVideo" :key="i" ref="video" width="400" height="150" muted autoplay controls />
   </div>
 </template>
 <style scoped>
@@ -99,6 +99,10 @@ export default class MRelay extends Vue {
 
   get enableUploadMonitor() {
     return this.role != "dest";
+  }
+  
+  get countVideo() {
+    return this.enableUploadMonitor ? 1 : this.deviceIds.filter(stream => stream);
   }
 
   @mounted
