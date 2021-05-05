@@ -112,14 +112,16 @@ export default class MRelay extends Vue {
 
   async start() {
     let sessionId = this.sessionId;
-    let streamId = '';
+    let deviceId: any = '';
+    let deviceIds: any = [];
     let role = this.role;
 
     if (this.enableUploadMonitor) {
-      streamId = `${this.deviceId}-${this.myId}` || this.streamId;
-      this.reportDevice(streamId);
+      deviceId = `${this.deviceId}-${this.myId}` || this.streamId;
+      deviceIds = [deviceId];
+      this.reportDevice({ id: this.myId, deviceId });
     } else if(this.enableDownloadMonitor){
-      streamId = this.deviceIds.filter(stream => stream);
+      deviceIds = this.deviceIds.filter(device => device).map(device => device.deviceId);
     }
 
     if (this.webRTCPair) {
@@ -132,7 +134,7 @@ export default class MRelay extends Vue {
         signalPairFactory(signal: Signal) {
           return signal
             .getSignalPair(this.targetId)
-            .getSignalPair([streamId])
+            .getSignalPair(deviceIds)
             .getSignalPair(role)
             .getSignalPair(sessionId);
         }
