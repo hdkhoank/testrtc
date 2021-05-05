@@ -102,7 +102,7 @@ export default class MRelay extends Vue {
   }
   
   get countVideo() {
-    return this.enableUploadMonitor ? 1 : this.deviceIds;
+    return this.enableUploadMonitor ? 1 : this.deviceIds.filter(stream => stream);
   }
 
   @mounted
@@ -119,7 +119,7 @@ export default class MRelay extends Vue {
       streamId = `${this.deviceId}-${this.myId}` || this.streamId;
       this.reportDevice(streamId);
     } else if(this.enableDownloadMonitor){
-      streamId = this.deviceIds;
+      streamId = this.deviceIds.filter(stream => stream);
     }
 
     if (this.webRTCPair) {

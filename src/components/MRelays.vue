@@ -25,7 +25,7 @@
       v-for="i in count"
       :key="i"
       :streamId="streamId"
-      :deviceIds='filterDeviceIds'
+      :deviceIds='deviceIds'
       :role="i != count ? 'source' : 'dest'"
       :videoEnable="videoEnable"
       :audioEnable="audioEnable"
@@ -90,10 +90,6 @@ export default class MRelays extends Vue {
   onDevice(i, event) {
     this.deviceIds = this.deviceIds || [];
     this.$set(this.deviceIds, i, event);
-  }
-
-  get filterDeviceIds() {
-    return this.deviceIds.filter(deviceId => deviceId);
   }
 
   @mounted
