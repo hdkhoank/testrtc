@@ -3,6 +3,7 @@
     <div>
       <input v-model="myId" placeholder="my ID" />
       <input v-model="partnerId" placeholder="partner ID" />
+      <input v-if='enableUploadMonitor' v-model="deviceId" placeholder="device ID" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
@@ -74,6 +75,8 @@ export default class MRelay extends Vue {
   })
   partnerId!: string;
 
+  deviceId = '4aa1008f-f157-48ef-8cfb-a6e5bd28f564';
+
   @SyncWithRouterQuerySimple("initiator", {
     defaultValue: true,
     map: (e) => e == "true",
@@ -104,7 +107,7 @@ export default class MRelay extends Vue {
 
   async start() {
     let sessionId = this.sessionId;
-    let streamId = this.streamId;
+    let streamId = `${this.deviceId}-${this.myId}` || this.streamId;
     let role = this.role;
     if (this.webRTCPair) {
       this.webRTCPair.close();
@@ -116,7 +119,7 @@ export default class MRelay extends Vue {
         signalPairFactory(signal: Signal) {
           return signal
             .getSignalPair(this.targetId)
-            .getSignalPair(streamId)
+            .getSignalPair([streamId])
             .getSignalPair(role)
             .getSignalPair(sessionId);
         }
@@ -148,7 +151,7 @@ export default class MRelay extends Vue {
             audio: this.audioEnable,
             video: this.videoEnable,
           });
-  
+
           for (let track of stream.getTracks()) {
             let sender = pc.addTrack(track);
             monitor.addMonitor(this.myId + "_up_" + track.kind, sender);

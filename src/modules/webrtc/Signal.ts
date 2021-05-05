@@ -50,7 +50,7 @@ export class SignalPair extends AdvanceEventEmitter implements SignalPairInterfa
     return `${this.signal.sId}/${this.target.slice(-10)}`
   }
 
-  constructor(public signal: Signal | SignalPair, public target: string) {
+  constructor(public signal: Signal | SignalPair, public target: any) {
     super();
     this.signal.on(target, this.handler);
     // this.on("message", (...e) => console.log("[SignalPair]", e))
@@ -62,7 +62,7 @@ export class SignalPair extends AdvanceEventEmitter implements SignalPairInterfa
     this.signal.send(this.target, msg, ...params);
   }
 
-  getSignalPair(targetId: string) {
+  getSignalPair(targetId: any) {
     return new SignalPair(this, targetId);
   }
 

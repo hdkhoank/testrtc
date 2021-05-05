@@ -25,7 +25,7 @@
       v-for="i in count"
       :key="i"
       :streamId="streamId"
-      :role="i == 1 ? 'source' : 'dest'"
+      :role="i != count ? 'source' : 'dest'"
       :videoEnable="videoEnable"
       :audioEnable="audioEnable"
       :autoStart="autoStart"
