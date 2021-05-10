@@ -3,7 +3,6 @@
     <div>
       <input v-model="myId" placeholder="my ID" />
       <input v-model="partnerId" placeholder="partner ID" />
-      <input v-model.number="amountStream" placeholder="Amount Stream" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
@@ -51,6 +50,7 @@ export default class MRelay extends Vue {
   @Prop() private audioEnable!: boolean;
   @Prop() private autoStart!: boolean;
   @Prop() private autoRestartEnable!: boolean;
+  @Prop() private amountStream!: number;
 
   get canStart() {
     return this.audioEnable || this.videoEnable;
@@ -64,8 +64,6 @@ export default class MRelay extends Vue {
   sessionId = "sid_" + String((Math.random() * 10000000) | 0);
 
   myId = String((Math.random() * 1000000000) | 0);
-
-  amountStream = 2;
 
   @SyncWithRouterQuerySimple("signalURL", {
     defaultValue: `wss://signal-conference-staging.quickom.com`,

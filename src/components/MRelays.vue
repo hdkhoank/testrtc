@@ -1,6 +1,7 @@
 <template>
   <div>
     <input v-model="n" placeholder="Peer count" />
+    <input v-model="nSource" placeholder="Source count" />
     <span>
       <input type="checkbox" id="videoEnable" name="videoEnable" v-model="videoEnable">
       <label for="videoEnable">videoEnable</label>
@@ -30,6 +31,7 @@
       :audioEnable="audioEnable"
       :autoStart="autoStart"
       :autoRestartEnable="autoRestartEnable"
+      :amountStream='countSource'
       @report="onReport(i, $event)"
     >
     </MRelay>
@@ -58,6 +60,11 @@ export default class MRelays extends Vue {
   })
   n!: string;
 
+  @SyncWithRouterQuerySimple("count_source", {
+    defaultValue: "1",
+  })
+  nSource!: string;
+
   streamId = Math.random().toString().slice(2);
 
   @SyncBoolWithRouter("videoEnable", true)
@@ -74,6 +81,10 @@ export default class MRelays extends Vue {
 
   get count() {
     return parseInt(this.n);
+  }
+
+  get countSource() {
+    return parseInt(this.nSource);
   }
 
   reportData!: any[];
