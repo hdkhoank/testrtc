@@ -3,7 +3,7 @@
     <div>
       <input v-model="myId" placeholder="my ID" />
       <input v-model="partnerId" placeholder="partner ID" />
-      <input v-model="amountStream" placeholder="Amount Stream" />
+      <input v-model.number="amountStream" placeholder="Amount Stream" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
