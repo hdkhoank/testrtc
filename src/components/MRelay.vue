@@ -3,6 +3,7 @@
     <div>
       <input v-model="myId" placeholder="my ID" />
       <input v-model="partnerId" placeholder="partner ID" />
+      <input v-model="amountStream" placeholder="Amount Stream" />
       <input type="checkbox" v-model="initiator" />
     </div>
     <p />
@@ -24,7 +25,7 @@
       "
     ><template v-for="log in logs">{{log}}{{"\n"}}</template></pre>
     <p />
-    <video ref="video" width="400" height="150" muted autoplay controls />
+    <video v-for="stream in amountStream" :key="stream" ref="video" width="400" height="150" muted autoplay controls />
   </div>
 </template>
 <style scoped>
@@ -63,6 +64,8 @@ export default class MRelay extends Vue {
   sessionId = "sid_" + String((Math.random() * 10000000) | 0);
 
   myId = String((Math.random() * 1000000000) | 0);
+
+  amountStream = 2;
 
   @SyncWithRouterQuerySimple("signalURL", {
     defaultValue: `wss://signal-conference-staging.quickom.com`,
@@ -144,19 +147,22 @@ export default class MRelay extends Vue {
           ],
         });
         if(this.enableUploadMonitor){
-          let stream = await navigator.mediaDevices.getUserMedia({
-            audio: this.audioEnable,
-            video: this.videoEnable,
-          });
-  
-          for (let track of stream.getTracks()) {
-            let sender = pc.addTrack(track);
-            monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
+          for(let i in Array(this.amountStream).fill(1)) {
+            let stream = await navigator.mediaDevices.getUserMedia({
+              audio: this.audioEnable,
+              video: this.videoEnable,
+            });
+    
+            for (let track of stream.getTracks()) {
+              let sender = pc.addTrack(track);
+              monitor.addMonitor(this.myId + "_up_" + track.kind, sender);
+            }
           }
         }else if(this.enableDownloadMonitor){
-          
-          this.videoEnable && pc.addTransceiver("video",{direction:"recvonly"});
-          this.audioEnable && pc.addTransceiver("audio",{direction:"recvonly"});
+          for(let i in Array(this.amountStream).fill(1)) {
+            this.videoEnable && pc.addTransceiver("video",{direction:"recvonly"});
+            this.audioEnable && pc.addTransceiver("audio",{direction:"recvonly"});
+          }
         }
 
         let trackHandlerTimeout: number,
@@ -171,10 +177,14 @@ export default class MRelay extends Vue {
           );
 
           trackHandlerTimeout = setTimeout(() => {
-            let stream = new MediaStream(tracks);
-            this.video.srcObject = stream;
-            console.log(tracks);
-            this.logs.push("PC Tracks ");
+            for(let i in Array(this.amountStream).fill(1)) {
+              let index = parseInt(i);
+              let newTracks = tracks.slice(index * 2,index * 2 + 2);
+              let stream = new MediaStream(newTracks);
+              this.video[index].srcObject = stream;
+              console.log(newTracks);
+              this.logs.push("PC Tracks ");
+            }
           }, 100);
         });
 
